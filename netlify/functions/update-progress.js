@@ -1,5 +1,5 @@
 import { readJson, writeJson } from './utils/azureBlob.js';
-import { getUserId, getUserName, isManager } from './utils/auth.js';
+import { getUserId, getUserEmail, getUserName, isAdmin, isManagerRole } from './utils/auth.js';
 
 export async function handler(event, context) {
   if (event.httpMethod !== 'POST') {
@@ -7,33 +7,52 @@ export async function handler(event, context) {
   }
   try {
     const requesterId = getUserId(context);
-    const { track, taskId, done, title, section, targetUserId } = JSON.parse(event.body || '{}');
+    const requesterEmail = getUserEmail(context);
+    const { track, taskId, done, title, section, targetUserId, starred } = JSON.parse(event.body || '{}');
     if (!track || !taskId) {
       return { statusCode: 400, body: JSON.stringify({ error: 'track and taskId are required' }) };
     }
 
-    // A user can only edit their own progress unless they're a manager
-    // (app_metadata.roles includes "manager" - set in the Identity dashboard).
     let userId = requesterId;
-    let userName = getUserName(context);
+    let selfEdit = true;
+
     if (targetUserId && targetUserId !== requesterId) {
-      if (!isManager(context)) {
-        return { statusCode: 403, body: JSON.stringify({ error: 'Only managers can edit another person\'s tasks' }) };
+      selfEdit = false;
+      const targetBlobName = `progress/${track}/${targetUserId}.json`;
+      const targetData = await readJson(targetBlobName, { tasks: [] });
+
+      if (isAdmin(context)) {
+        // admins can edit anyone
+      } else if (isManagerRole(context)) {
+        // managers can only edit people who report to them
+        if (targetData.managerId !== requesterEmail) {
+          return { statusCode: 403, body: JSON.stringify({ error: 'This person is not on your team' }) };
+        }
+      } else {
+        return { statusCode: 403, body: JSON.stringify({ error: 'Not authorized to edit another person\'s tasks' }) };
       }
       userId = targetUserId;
-      userName = null; // preserve whatever name is already on file for that user
     }
 
     const blobName = `progress/${track}/${userId}.json`;
     const current = await readJson(blobName, { tasks: [] });
 
     const idx = current.tasks.findIndex((t) => t.id === taskId);
+    const canSetStar = !selfEdit; // only a manager/admin acting on someone else can star a task
     if (idx >= 0) {
       current.tasks[idx].done = done;
+      if (canSetStar && starred !== undefined) current.tasks[idx].starred = starred;
     } else {
-      current.tasks.push({ id: taskId, title: title || taskId, section: section || 'task-queue', done, addedBy: targetUserId ? requesterId : undefined });
+      current.tasks.push({
+        id: taskId,
+        title: title || taskId,
+        section: section || 'task-queue',
+        done,
+        starred: canSetStar ? Boolean(starred) : false,
+        addedBy: selfEdit ? undefined : requesterEmail
+      });
     }
-    if (userName) current.userName = userName;
+    if (selfEdit) current.userName = getUserName(context);
     current.lastActive = new Date().toISOString();
 
     await writeJson(blobName, current);
