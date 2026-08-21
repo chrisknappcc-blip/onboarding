@@ -12,6 +12,7 @@ import AppWalkthroughs from './sections/AppWalkthroughs.jsx';
 import Intranet from './sections/Intranet.jsx';
 import TaskQueue from './sections/TaskQueue.jsx';
 import TeamProgress from './sections/TeamProgress.jsx';
+import TeamAdmin from './sections/TeamAdmin.jsx';
 
 export default function App() {
   const { user, initialized, login } = useIdentity();
@@ -21,16 +22,22 @@ export default function App() {
   }, [initialized, user]);
 
   if (!initialized) {
-    return <div className="min-h-screen flex items-center justify-center text-sm text-gray-400">Loading...</div>;
+    return <div className="min-h-screen flex items-center justify-center text-sm text-ink-300 bg-surface">Loading...</div>;
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-gray-50">
-        <p className="text-sm text-gray-500">Sign in to continue.</p>
+      <div className="min-h-screen flex flex-col items-center justify-center gap-5 bg-surface">
+        <div className="w-10 h-10 rounded-lg bg-navy flex items-center justify-center">
+          <span className="text-white font-display font-semibold text-lg">O</span>
+        </div>
+        <div className="text-center">
+          <h1 className="font-display text-xl font-semibold text-ink-900">Onboarding Hub</h1>
+          <p className="text-sm text-ink-500 mt-1">Sign in to continue.</p>
+        </div>
         <button
           onClick={login}
-          className="px-4 py-2 bg-brand text-white text-sm font-medium rounded-lg hover:bg-brand-dark"
+          className="px-5 py-2.5 bg-navy text-white text-sm font-medium rounded-xl hover:bg-navy-dark transition-colors"
         >
           Log in
         </button>
@@ -42,12 +49,11 @@ export default function App() {
 }
 
 function AuthedApp() {
-  const { track: trackKey, roles } = useIdentity();
+  const { track: trackKey, hasTeamAccess, isAdmin } = useIdentity();
   const track = getTrack(trackKey);
-  const isManager = roles.includes('manager');
 
   return (
-    <Layout track={track} isManager={isManager}>
+    <Layout track={track} hasTeamAccess={hasTeamAccess} isAdmin={isAdmin}>
       <Routes>
         <Route path="/" element={<Dashboard track={track} />} />
         <Route path="/playbook" element={<Playbook trackKey={trackKey} />} />
@@ -56,8 +62,11 @@ function AuthedApp() {
         <Route path="/app-walkthroughs" element={<AppWalkthroughs trackKey={trackKey} />} />
         <Route path="/intranet" element={<Intranet trackKey={trackKey} />} />
         <Route path="/task-queue" element={<TaskQueue trackKey={trackKey} track={track} />} />
-        {isManager && (
+        {hasTeamAccess && (
           <Route path="/team-progress" element={<TeamProgress trackKey={trackKey} />} />
+        )}
+        {isAdmin && (
+          <Route path="/team-admin" element={<TeamAdmin />} />
         )}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
