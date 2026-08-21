@@ -36,7 +36,8 @@ function AddMemberForm({ managers, onCreated }) {
       const appMetadata = {
         roles: role ? [role] : [],
         track,
-        managerId: managerId || undefined
+        managerId: managerId || undefined,
+        mustChangePassword: true
       };
       await api.createTeamUser(email.trim(), fullName.trim(), password, appMetadata);
       setResult({ email: email.trim(), password });
@@ -66,7 +67,7 @@ function AddMemberForm({ managers, onCreated }) {
           Temporary password: <span className="font-mono font-semibold">{result.password}</span>
         </p>
         <p className="text-xs text-ink-500 mt-1">
-          Send this to them directly (Slack, text, in person) — not email, since that's what caused the invite link problem. They can log in immediately with it.
+          Send this to them directly (Slack, text, in person) — not email, since that's what caused the invite link problem. They'll be asked to set their own password the moment they log in with it.
         </p>
         <div className="flex gap-2 mt-3">
           <button onClick={copyCreds} className="flex items-center gap-1.5 px-3 py-1.5 bg-navy text-white text-xs font-medium rounded-lg hover:bg-navy-dark">
