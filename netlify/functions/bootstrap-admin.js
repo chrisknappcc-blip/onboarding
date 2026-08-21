@@ -19,12 +19,9 @@ export async function handler(event, context) {
       return { statusCode: 500, body: JSON.stringify({ error: 'BOOTSTRAP_ADMIN_SECRET is not set in Netlify env vars yet.' }) };
     }
 
-    const { secret, email, fullName, password } = JSON.parse(event.body || '{}');
+    const { secret, email, fullName, password, userId } = JSON.parse(event.body || '{}');
     if (secret !== configuredSecret) {
       return { statusCode: 403, body: JSON.stringify({ error: 'Invalid secret' }) };
-    }
-    if (!email || !password) {
-      return { statusCode: 400, body: JSON.stringify({ error: 'email and password are required' }) };
     }
 
     const identity = context.clientContext?.identity;
@@ -32,6 +29,25 @@ export async function handler(event, context) {
       return { statusCode: 500, body: JSON.stringify({ error: 'Identity admin context not available - is Identity enabled on this site?' }) };
     }
     const { url, token } = identity;
+
+    // Fixup path: confirm an existing (already-created-but-unconfirmed)
+    // account by id, without trying to recreate it.
+    if (userId) {
+      const confirmRes = await fetch(`${url}/admin/users/${userId}`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirmed_at: new Date().toISOString() })
+      });
+      if (!confirmRes.ok) {
+        const text = await confirmRes.text().catch(() => '');
+        throw new Error(`Confirm failed: ${confirmRes.status} ${text}`);
+      }
+      return { statusCode: 200, body: JSON.stringify({ ok: true, confirmed: userId }) };
+    }
+
+    if (!email || !password) {
+      return { statusCode: 400, body: JSON.stringify({ error: 'email and password are required' }) };
+    }
 
     const res = await fetch(`${url}/admin/users`, {
       method: 'POST',
@@ -56,6 +72,20 @@ export async function handler(event, context) {
     }
 
     const created = await res.json();
+
+    // email_confirm: true at creation time isn't reliably honored - force
+    // confirmation explicitly as a follow-up so login doesn't hit
+    // "Email not confirmed".
+    const confirmRes = await fetch(`${url}/admin/users/${created.id}`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ confirmed_at: new Date().toISOString() })
+    });
+    if (!confirmRes.ok) {
+      const text = await confirmRes.text().catch(() => '');
+      throw new Error(`Account created but confirming email failed: ${confirmRes.status} ${text}`);
+    }
+
     return { statusCode: 200, body: JSON.stringify({ ok: true, id: created.id }) };
   } catch (err) {
     return { statusCode: 500, body: JSON.stringify({ error: err.message }) };

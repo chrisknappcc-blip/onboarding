@@ -64,6 +64,19 @@ export async function handler(event, context) {
           throw new Error(`Identity admin create failed: ${res.status} ${text}`);
         }
         const created = await res.json();
+
+        // email_confirm: true at creation isn't reliably honored - force
+        // confirmation explicitly so login doesn't hit "Email not confirmed".
+        const confirmRes = await fetch(`${url}/admin/users/${created.id}`, {
+          method: 'PUT',
+          headers: { ...authHeader, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ confirmed_at: new Date().toISOString() })
+        });
+        if (!confirmRes.ok) {
+          const text = await confirmRes.text().catch(() => '');
+          throw new Error(`Account created but confirming email failed: ${confirmRes.status} ${text}`);
+        }
+
         return { statusCode: 200, body: JSON.stringify({ id: created.id }) };
       }
 
