@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useIdentity } from './lib/identity.jsx';
 import Layout from './components/Layout.jsx';
 import ProfileGate from './components/ProfileGate.jsx';
+import RequirePasswordChange from './components/RequirePasswordChange.jsx';
 import { getTrack } from './config/tracks.js';
 
 import Dashboard from './sections/Dashboard.jsx';
@@ -55,9 +56,11 @@ export default function App() {
   }
 
   return (
-    <ProfileGate>
-      <AuthedApp />
-    </ProfileGate>
+    <RequirePasswordChange>
+      <ProfileGate>
+        <AuthedApp />
+      </ProfileGate>
+    </RequirePasswordChange>
   );
 }
 
