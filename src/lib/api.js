@@ -39,6 +39,13 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ track: trackKey, taskId, done: currentDone, starred, targetUserId })
     }),
+  // Admin-only: manage roles, track, and manager assignment for everyone.
+  listTeamUsers: () => call('manage-team'),
+  updateTeamUser: (userId, appMetadata) =>
+    call('manage-team', {
+      method: 'POST',
+      body: JSON.stringify({ userId, appMetadata })
+    }),
   addTaskForUser: (trackKey, targetUserId, title) =>
     call('update-progress', {
       method: 'POST',
