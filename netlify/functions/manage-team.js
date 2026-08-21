@@ -36,7 +36,39 @@ export async function handler(event, context) {
     }
 
     if (event.httpMethod === 'POST') {
-      const { userId, appMetadata } = JSON.parse(event.body || '{}');
+      const body = JSON.parse(event.body || '{}');
+
+      // Create a new user directly with a password, bypassing Netlify's
+      // invite email entirely. Exists because corporate email scanners
+      // (e.g. Microsoft Defender Safe Links) pre-fetch links in incoming
+      // mail to scan them, which burns Netlify Identity's one-time invite
+      // token before the real person ever clicks it.
+      if (body.action === 'create') {
+        const { email, fullName, password, appMetadata } = body;
+        if (!email || !password) {
+          return { statusCode: 400, body: JSON.stringify({ error: 'email and password are required' }) };
+        }
+        const res = await fetch(`${url}/admin/users`, {
+          method: 'POST',
+          headers: { ...authHeader, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email,
+            password,
+            email_confirm: true, // skip the confirmation email step too
+            user_metadata: fullName ? { full_name: fullName } : undefined,
+            app_metadata: appMetadata || {}
+          })
+        });
+        if (!res.ok) {
+          const text = await res.text().catch(() => '');
+          throw new Error(`Identity admin create failed: ${res.status} ${text}`);
+        }
+        const created = await res.json();
+        return { statusCode: 200, body: JSON.stringify({ id: created.id }) };
+      }
+
+      // Existing path: update roles/track/managerId on an existing user.
+      const { userId, appMetadata } = body;
       if (!userId || !appMetadata) {
         return { statusCode: 400, body: JSON.stringify({ error: 'userId and appMetadata are required' }) };
       }
