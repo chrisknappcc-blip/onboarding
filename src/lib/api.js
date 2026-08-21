@@ -46,6 +46,11 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ userId, appMetadata })
     }),
+  createTeamUser: (email, fullName, password, appMetadata) =>
+    call('manage-team', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'create', email, fullName, password, appMetadata })
+    }),
   addTaskForUser: (trackKey, targetUserId, title) =>
     call('update-progress', {
       method: 'POST',
