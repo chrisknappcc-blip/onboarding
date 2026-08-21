@@ -27,11 +27,17 @@ export const api = {
   getContent: (trackKey, section) =>
     call(`get-content?track=${encodeURIComponent(trackKey)}&section=${encodeURIComponent(section)}`),
   // Manager-only endpoints
-  getTeamProgress: (trackKey) => call(`get-team-progress?track=${encodeURIComponent(trackKey)}`),
+  getTeamProgress: (trackKey, scope) =>
+    call(`get-team-progress?track=${encodeURIComponent(trackKey)}${scope ? `&scope=${scope}` : ''}`),
   updateUserTask: (trackKey, targetUserId, taskId, done, extra = {}) =>
     call('update-progress', {
       method: 'POST',
       body: JSON.stringify({ track: trackKey, taskId, done, targetUserId, ...extra })
+    }),
+  setTaskStarred: (trackKey, targetUserId, taskId, starred, currentDone) =>
+    call('update-progress', {
+      method: 'POST',
+      body: JSON.stringify({ track: trackKey, taskId, done: currentDone, starred, targetUserId })
     }),
   addTaskForUser: (trackKey, targetUserId, title) =>
     call('update-progress', {
