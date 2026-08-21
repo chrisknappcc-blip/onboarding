@@ -20,17 +20,21 @@ export function IdentityProvider({ children }) {
     };
   }, []);
 
+  const meta = user?.app_metadata || {};
+  const roles = meta.roles || [];
+
   const value = {
     user,
     initialized,
     login: () => netlifyIdentity.open('login'),
     logout: () => netlifyIdentity.logout(),
-    // Roles are set as app_metadata.roles in the Netlify Identity dashboard
-    // (Identity > select user > Edit > add role). Use "manager" for Chris,
-    // Cole, and John so they see the Team Progress tab.
-    roles: netlifyIdentity.currentUser()?.app_metadata?.roles || [],
-    // Track is set the same way: app_metadata.track = "bdr" or "ae".
-    track: netlifyIdentity.currentUser()?.app_metadata?.track || 'bdr'
+    roles,
+    isAdmin: roles.includes('admin'),          // Chris, John - see everyone
+    isManagerRole: roles.includes('manager'),  // Cole - scoped to his own team
+    hasTeamAccess: roles.includes('admin') || roles.includes('manager'),
+    track: meta.track || 'bdr',
+    // "mine" (Chris) or "all" (John) - only relevant for admins
+    defaultTeamView: meta.defaultTeamView || 'mine'
   };
 
   return <IdentityContext.Provider value={value}>{children}</IdentityContext.Provider>;
