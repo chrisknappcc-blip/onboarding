@@ -2,8 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --color-ring-track: #E7E9EE;
+  --color-accent: #D98C3F;
+  --color-success: #2F8F5B;
+}
+
 body {
   margin: 0;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  background-color: #f7f7f8;
+  background-color: #F3EEE3;
+  color: #14181F;
+}
+
+h1, h2, h3 {
+  font-family: 'Sora', sans-serif;
+}
+
+/* visible keyboard focus, not just a browser default outline */
+:focus-visible {
+  outline: 2px solid #16305C;
+  outline-offset: 2px;
 }
