@@ -51,6 +51,7 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ action: 'create', email, fullName, password, appMetadata })
     }),
+  clearMustChangePassword: () => call('clear-must-change-password', { method: 'POST' }),
   addTaskForUser: (trackKey, targetUserId, title) =>
     call('update-progress', {
       method: 'POST',
