@@ -9,10 +9,10 @@ export const TRACKS = {
     label: 'BDR Onboarding',
     manager: 'chris.knapp',
     sections: [
-      { key: 'playbook', label: 'Playbook', icon: 'BookOpen' },
-      { key: 'hubspot-walkthrough', label: 'HubSpot Walkthrough', icon: 'MousePointerClick' },
+      { key: 'playbook', label: 'Playbook', icon: 'BookOpen', searchable: true },
+      { key: 'hubspot-walkthrough', label: 'HubSpot Walkthrough', icon: 'MousePointerClick', searchable: true },
       { key: 'gong-library', label: 'Gong Recordings', icon: 'PlayCircle' },
-      { key: 'app-walkthroughs', label: 'Tools We Use', icon: 'LayoutGrid' },
+      { key: 'app-walkthroughs', label: 'Tools We Use', icon: 'LayoutGrid', searchable: true },
       { key: 'intranet', label: 'Intranet', icon: 'Globe' },
       { key: 'task-queue', label: 'My Tasks', icon: 'ListChecks' }
     ],
@@ -31,10 +31,10 @@ export const TRACKS = {
     label: 'AE Onboarding (Cole\'s Team)',
     manager: 'cole',
     sections: [
-      { key: 'playbook', label: 'Playbook', icon: 'BookOpen' },
-      { key: 'hubspot-walkthrough', label: 'HubSpot Walkthrough', icon: 'MousePointerClick' },
+      { key: 'playbook', label: 'Playbook', icon: 'BookOpen', searchable: true },
+      { key: 'hubspot-walkthrough', label: 'HubSpot Walkthrough', icon: 'MousePointerClick', searchable: true },
       { key: 'gong-library', label: 'Gong Recordings', icon: 'PlayCircle' },
-      { key: 'app-walkthroughs', label: 'Tools We Use', icon: 'LayoutGrid' },
+      { key: 'app-walkthroughs', label: 'Tools We Use', icon: 'LayoutGrid', searchable: true },
       { key: 'intranet', label: 'Intranet', icon: 'Globe' },
       { key: 'task-queue', label: 'My Tasks', icon: 'ListChecks' }
     ],
