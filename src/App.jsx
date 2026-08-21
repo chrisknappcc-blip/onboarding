@@ -19,7 +19,15 @@ export default function App() {
   const { user, initialized, login } = useIdentity();
 
   useEffect(() => {
-    if (initialized && !user) login();
+    if (!initialized || user) return;
+    // If this load came from an invite/confirmation/recovery email link,
+    // netlify-identity-widget already auto-opens its own contextual form
+    // (e.g. "set your password") using the token in the URL hash. Forcing
+    // open('login') here would override that with a plain login tab and
+    // throw away the invite context - so skip it when a token is present.
+    const hash = window.location.hash || '';
+    const hasAuthToken = /(invite_token|confirmation_token|recovery_token|access_token)=/.test(hash);
+    if (!hasAuthToken) login();
   }, [initialized, user]);
 
   if (!initialized) {
