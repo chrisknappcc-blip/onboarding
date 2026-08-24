@@ -5,23 +5,31 @@ import { api } from '../lib/api.js';
 import { useIdentity } from '../lib/identity.jsx';
 
 export default function Dashboard({ track }) {
-  const { track: trackKey, user } = useIdentity();
+  const { track: trackKey, user, managerId } = useIdentity();
   const [tasks, setTasks] = useState(null);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    api.getProgress(trackKey)
-      .then((data) => {
+    Promise.all([
+      api.getProgress(trackKey),
+      api.getContent(trackKey, 'tasks', managerId).catch(() => ({ blocks: [] }))
+    ])
+      .then(([data, templateContent]) => {
+        const templateTasks = (templateContent.blocks || [])
+          .filter((b) => b.type === 'task')
+          .map((b) => ({ id: b.id, title: b.text, section: 'task-queue' }));
+        const defaults = templateTasks.length > 0 ? templateTasks : track.defaultTasks;
+
         const saved = data.tasks || [];
         const savedIds = new Set(saved.map((t) => t.id));
         const merged = [
           ...saved,
-          ...track.defaultTasks.filter((t) => !savedIds.has(t.id)).map((t) => ({ ...t, done: false }))
+          ...defaults.filter((t) => !savedIds.has(t.id)).map((t) => ({ ...t, done: false }))
         ];
         setTasks(merged);
       })
       .catch((e) => setError(e.message));
-  }, [trackKey]);
+  }, [trackKey, managerId]);
 
   const firstName = (user?.user_metadata?.full_name || user?.email || '').split(/[\s@]/)[0];
 

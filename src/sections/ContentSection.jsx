@@ -1,21 +1,23 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Search, X } from 'lucide-react';
 import { api } from '../lib/api.js';
+import { useIdentity } from '../lib/identity.jsx';
 
 // Shared shell for sections that are just "fetch some content, render it".
 // Content shape from get-content.js: { title, blocks: [{ type: 'text'|'link'|'video', ... }] }
 export default function ContentSection({ trackKey, section, emptyLabel, searchable }) {
+  const { managerId } = useIdentity();
   const [content, setContent] = useState(null);
   const [error, setError] = useState(null);
   const [query, setQuery] = useState('');
 
   useEffect(() => {
     let cancelled = false;
-    api.getContent(trackKey, section)
+    api.getContent(trackKey, section, managerId)
       .then((data) => !cancelled && setContent(data))
       .catch((e) => !cancelled && setError(e.message));
     return () => { cancelled = true; };
-  }, [trackKey, section]);
+  }, [trackKey, section, managerId]);
 
   const filteredBlocks = useMemo(() => {
     if (!content?.blocks) return [];

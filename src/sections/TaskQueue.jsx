@@ -1,29 +1,41 @@
 import { useEffect, useState } from 'react';
 import { CheckCircle2, Circle, Plus, Star } from 'lucide-react';
 import { api } from '../lib/api.js';
+import { useIdentity } from '../lib/identity.jsx';
 import ProgressRing from '../components/ProgressRing.jsx';
 
 export default function TaskQueue({ trackKey, track }) {
+  const { managerId } = useIdentity();
   const [tasks, setTasks] = useState(null);
   const [newTask, setNewTask] = useState('');
   const [error, setError] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
-    api.getProgress(trackKey)
-      .then((data) => {
+    Promise.all([
+      api.getProgress(trackKey),
+      // A manager's own task template (Content Library) takes precedence
+      // over the hardcoded defaults in tracks.js, if they've set one up.
+      api.getContent(trackKey, 'tasks', managerId).catch(() => ({ blocks: [] }))
+    ])
+      .then(([data, templateContent]) => {
         if (cancelled) return;
+        const templateTasks = (templateContent.blocks || [])
+          .filter((b) => b.type === 'task')
+          .map((b) => ({ id: b.id, title: b.text, section: 'task-queue' }));
+        const defaults = templateTasks.length > 0 ? templateTasks : track.defaultTasks;
+
         const saved = data.tasks || [];
         const savedIds = new Set(saved.map((t) => t.id));
         const merged = [
           ...saved,
-          ...track.defaultTasks.filter((t) => !savedIds.has(t.id)).map((t) => ({ ...t, done: false }))
+          ...defaults.filter((t) => !savedIds.has(t.id)).map((t) => ({ ...t, done: false }))
         ];
         setTasks(merged);
       })
       .catch((e) => setError(e.message));
     return () => { cancelled = true; };
-  }, [trackKey]);
+  }, [trackKey, managerId]);
 
   async function toggleTask(taskId, done) {
     setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, done } : t)));
