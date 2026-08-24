@@ -37,9 +37,12 @@ export async function handler(event, context) {
       const requestedManagerId = event.queryStringParameters?.managerId;
       if (!section) return { statusCode: 400, body: JSON.stringify({ error: 'section is required' }) };
 
-      // Managers can only ever look at their own content; admins can pick
-      // any manager via the dropdown in the UI.
-      const managerId = admin && requestedManagerId ? requestedManagerId : requesterEmail;
+      // Anyone with team access can target a team-scoped bucket (team:key) -
+      // that's their own sub-team, not someone else's individual content.
+      // Targeting another specific manager's content is admin-only.
+      const isTeamTarget = typeof requestedManagerId === 'string' && requestedManagerId.startsWith('team:');
+      const canTarget = requestedManagerId && (admin || isTeamTarget);
+      const managerId = canTarget ? requestedManagerId : requesterEmail;
 
       const mine = await readJson(`content/${managerId}/${section}.json`, { blocks: [] });
       const library = await readJson(`content/library/${section}.json`, { blocks: [] });
@@ -52,7 +55,9 @@ export async function handler(event, context) {
       if (!section || !action) {
         return { statusCode: 400, body: JSON.stringify({ error: 'section and action are required' }) };
       }
-      const managerId = admin && requestedManagerId ? requestedManagerId : requesterEmail;
+      const isTeamTarget = typeof requestedManagerId === 'string' && requestedManagerId.startsWith('team:');
+      const canTarget = requestedManagerId && (admin || isTeamTarget);
+      const managerId = canTarget ? requestedManagerId : requesterEmail;
       const path = `content/${managerId}/${section}.json`;
       const current = await readJson(path, { blocks: [] });
 
@@ -63,7 +68,8 @@ export async function handler(event, context) {
         };
         current.blocks.push(block);
         await writeJson(path, current);
-        const addedByName = `${getUserName(context)} - ${getUserTrack(context).toUpperCase()}`;
+        const addedByName = (body.customLabel && body.customLabel.trim())
+          || `${getUserName(context)} - ${getUserTrack(context).toUpperCase()}`;
         await upsertIntoLibrary(section, block, addedByName);
         return { statusCode: 200, body: JSON.stringify({ ok: true, block }) };
       }
