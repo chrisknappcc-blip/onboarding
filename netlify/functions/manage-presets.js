@@ -76,6 +76,21 @@ export async function handler(event, context) {
         return { statusCode: 200, body: JSON.stringify({ ok: true }) };
       }
 
+      if (body.action === 'rename') {
+        const { oldName, newName } = body;
+        if (!oldName || !newName) {
+          return { statusCode: 400, body: JSON.stringify({ error: 'oldName and newName are required' }) };
+        }
+        const safeOld = oldName.trim().replace(/[^a-zA-Z0-9 _-]/g, '');
+        const safeNew = newName.trim().replace(/[^a-zA-Z0-9 _-]/g, '');
+        const preset = await readJson(`presets/${safeOld}.json`, null);
+        if (!preset) return { statusCode: 404, body: JSON.stringify({ error: 'Preset not found' }) };
+        preset.name = newName.trim();
+        await writeJson(`presets/${safeNew}.json`, preset);
+        if (safeNew !== safeOld) await writeJson(`presets/${safeOld}.json`, null);
+        return { statusCode: 200, body: JSON.stringify({ ok: true }) };
+      }
+
       return { statusCode: 400, body: JSON.stringify({ error: `Unknown action: ${body.action}` }) };
     }
 

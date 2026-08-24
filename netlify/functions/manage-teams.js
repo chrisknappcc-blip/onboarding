@@ -27,14 +27,26 @@ export async function handler(event, context) {
         const key = slugify(body.label || '');
         if (!key) return { statusCode: 400, body: JSON.stringify({ error: 'Invalid team name' }) };
         if (!data.teams.some((t) => t.key === key)) {
-          data.teams.push({ key, label: body.label.trim() });
+          data.teams.push({ key, label: body.label.trim(), parentKey: body.parentKey || null });
           await writeJson('teams.json', data);
         }
         return { statusCode: 200, body: JSON.stringify({ ok: true, key }) };
       }
 
+      if (body.action === 'edit') {
+        const idx = data.teams.findIndex((t) => t.key === body.key);
+        if (idx === -1) return { statusCode: 404, body: JSON.stringify({ error: 'Team not found' }) };
+        if (body.label) data.teams[idx].label = body.label.trim();
+        if (body.parentKey !== undefined) data.teams[idx].parentKey = body.parentKey || null;
+        await writeJson('teams.json', data);
+        return { statusCode: 200, body: JSON.stringify({ ok: true }) };
+      }
+
       if (body.action === 'remove') {
-        data.teams = data.teams.filter((t) => t.key !== body.key);
+        // Orphan any children of a removed team rather than deleting them.
+        data.teams = data.teams
+          .filter((t) => t.key !== body.key)
+          .map((t) => (t.parentKey === body.key ? { ...t, parentKey: null } : t));
         await writeJson('teams.json', data);
         return { statusCode: 200, body: JSON.stringify({ ok: true }) };
       }
