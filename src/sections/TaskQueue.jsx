@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { CheckCircle2, Circle, Plus, Star } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { useIdentity } from '../lib/identity.jsx';
@@ -38,9 +39,10 @@ export default function TaskQueue({ trackKey, track }) {
   }, [trackKey, managerId]);
 
   async function toggleTask(taskId, done) {
+    const task = tasks.find((t) => t.id === taskId);
     setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, done } : t)));
     try {
-      await api.updateProgress(trackKey, taskId, done);
+      await api.updateProgress(trackKey, taskId, done, { title: task?.title, section: task?.section });
     } catch (e) {
       setError(e.message);
     }
@@ -49,9 +51,10 @@ export default function TaskQueue({ trackKey, track }) {
   function addTask() {
     if (!newTask.trim()) return;
     const id = `custom-${Date.now()}`;
-    setTasks((prev) => [...prev, { id, title: newTask.trim(), section: 'task-queue', done: false, custom: true }]);
+    const title = newTask.trim();
+    setTasks((prev) => [...prev, { id, title, section: 'task-queue', done: false, custom: true }]);
     setNewTask('');
-    api.updateProgress(trackKey, id, false).catch((e) => setError(e.message));
+    api.updateProgress(trackKey, id, false, { title, section: 'task-queue' }).catch((e) => setError(e.message));
   }
 
   if (error) {
@@ -76,23 +79,33 @@ export default function TaskQueue({ trackKey, track }) {
       <div className="mt-6 space-y-2">
         {[...tasks]
           .sort((a, b) => (b.starred ? 1 : 0) - (a.starred ? 1 : 0) || (a.done ? 1 : 0) - (b.done ? 1 : 0))
-          .map((t) => (
-          <button
-            key={t.id}
-            onClick={() => toggleTask(t.id, !t.done)}
-            className="w-full flex items-center gap-3 p-3.5 bg-card border border-border rounded-xl text-left hover:border-navy/30 transition-colors"
-          >
-            {t.done ? (
-              <CheckCircle2 className="text-success shrink-0" size={20} />
-            ) : (
-              <Circle className="text-ink-300 shrink-0" size={20} />
-            )}
-            <span className={`flex-1 text-sm ${t.done ? 'text-ink-300 line-through' : 'text-ink-900'}`}>
-              {t.title}
-            </span>
-            {t.starred && <Star size={16} className="text-accent fill-accent shrink-0" />}
-          </button>
-        ))}
+          .map((t) => {
+            const opensSomewhere = t.section && t.section !== 'task-queue';
+            return (
+              <div
+                key={t.id}
+                className="w-full flex items-center gap-3 p-3.5 bg-card border border-border rounded-xl hover:border-navy/30 transition-colors"
+              >
+                <button onClick={() => toggleTask(t.id, !t.done)} className="shrink-0">
+                  {t.done ? (
+                    <CheckCircle2 className="text-success" size={20} />
+                  ) : (
+                    <Circle className="text-ink-300" size={20} />
+                  )}
+                </button>
+                {opensSomewhere ? (
+                  <Link to={`/${t.section}`} className={`flex-1 text-sm hover:underline ${t.done ? 'text-ink-300 line-through' : 'text-ink-900'}`}>
+                    {t.title}
+                  </Link>
+                ) : (
+                  <span className={`flex-1 text-sm ${t.done ? 'text-ink-300 line-through' : 'text-ink-900'}`}>
+                    {t.title}
+                  </span>
+                )}
+                {t.starred && <Star size={16} className="text-lime fill-lime shrink-0" />}
+              </div>
+            );
+          })}
       </div>
 
       <div className="mt-4 flex gap-2">

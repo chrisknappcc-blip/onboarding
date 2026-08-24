@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { useIdentity } from '../lib/identity.jsx';
 import { ContentBlock } from './ContentSection.jsx';
@@ -13,9 +14,11 @@ export const INTRO_CHAPTERS = [
 
 export default function Intro() {
   const { track: trackKey, managerId, user } = useIdentity();
+  const navigate = useNavigate();
   const [index, setIndex] = useState(0);
   const [content, setContent] = useState({});
   const [error, setError] = useState(null);
+  const [finishing, setFinishing] = useState(false);
 
   const firstName = (user?.user_metadata?.full_name || user?.email || '').split(/[\s@]/)[0];
   const chapter = INTRO_CHAPTERS[index];
@@ -29,6 +32,20 @@ export default function Intro() {
       })
       .catch((e) => setError(e.message));
   }, [trackKey, managerId]);
+
+  async function finish() {
+    setFinishing(true);
+    try {
+      await api.updateProgress(trackKey, 'intro-complete', true, {
+        title: 'Complete the Intro',
+        section: 'intro'
+      });
+    } catch (e) {
+      // Don't block navigation on this - worst case they see it unchecked
+      // and it self-heals next time they toggle anything.
+    }
+    navigate('/task-queue');
+  }
 
   const current = content[chapter.key];
 
@@ -86,7 +103,13 @@ export default function Intro() {
             Next <ChevronRight size={16} />
           </button>
         ) : (
-          <span className="text-sm text-ink-300">That's the intro — use the tiles to keep exploring.</span>
+          <button
+            onClick={finish}
+            disabled={finishing}
+            className="flex items-center gap-1.5 px-4 py-2 bg-navy text-white text-sm font-medium rounded-lg hover:bg-navy-dark disabled:opacity-50"
+          >
+            <Check size={16} /> {finishing ? 'Finishing...' : "Finish - I'm done"}
+          </button>
         )}
       </div>
     </div>

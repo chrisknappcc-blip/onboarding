@@ -77,7 +77,7 @@ export default function ContentSection({ trackKey, section, emptyLabel, searchab
   );
 }
 
-function highlight(text, query) {
+export function highlight(text, query) {
   if (!query) return text;
   const idx = text.toLowerCase().indexOf(query.toLowerCase());
   if (idx === -1) return text;
@@ -99,7 +99,7 @@ function faviconFor(url) {
   }
 }
 
-function ContentBlock({ block, query }) {
+export function ContentBlock({ block, query }) {
   if (block.type === 'text') {
     return (
       <p className="text-sm text-ink-700 leading-relaxed whitespace-pre-wrap">

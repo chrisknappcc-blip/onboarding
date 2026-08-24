@@ -90,9 +90,10 @@ function IndividualView({ trackKey, person, onBack, onChanged }) {
   const done = tasks.filter((t) => t.done).length;
 
   async function toggle(taskId, doneState) {
+    const task = tasks.find((t) => t.id === taskId);
     setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, done: doneState } : t)));
     try {
-      await api.updateUserTask(trackKey, person.userId, taskId, doneState);
+      await api.updateUserTask(trackKey, person.userId, taskId, doneState, { title: task?.title, section: task?.section });
       onChanged();
     } catch (e) {
       setError(e.message);

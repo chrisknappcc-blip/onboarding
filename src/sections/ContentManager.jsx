@@ -4,6 +4,10 @@ import { api } from '../lib/api.js';
 import { useIdentity } from '../lib/identity.jsx';
 
 const SECTIONS = [
+  { key: 'intro-about', label: 'Intro: About the Company', kind: 'blocks' },
+  { key: 'intro-structure', label: 'Intro: Company Structure', kind: 'blocks' },
+  { key: 'intro-offerings', label: 'Intro: Our Offerings', kind: 'blocks' },
+  { key: 'intro-network', label: 'Intro: Who Else You Work With', kind: 'blocks' },
   { key: 'playbook', label: 'Playbook', kind: 'blocks' },
   { key: 'gong-library', label: 'Gong Recordings', kind: 'blocks' },
   { key: 'app-walkthroughs', label: 'Tools We Use', kind: 'blocks' },
