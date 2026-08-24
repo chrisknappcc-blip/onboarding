@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import {
   Home, BookOpen, MousePointerClick, PlayCircle,
-  LayoutGrid, Globe, ListChecks, Users2, ShieldCheck, Library
+  LayoutGrid, Globe, ListChecks, Users2, ShieldCheck, Library, LayoutTemplate
 } from 'lucide-react';
 
 const ICONS = {
@@ -66,7 +66,10 @@ export default function Sidebar({ track, hasTeamAccess, isAdmin }) {
               <Tile to="/team-progress" label="Team Progress" Icon={Users2} colorClass={nextColor()} />
               <Tile to="/content-library" label="Content Library" Icon={Library} colorClass={nextColor()} />
               {isAdmin && (
-                <Tile to="/team-admin" label="Manage Access" Icon={ShieldCheck} colorClass={nextColor()} />
+                <>
+                  <Tile to="/team-admin" label="Manage Access" Icon={ShieldCheck} colorClass={nextColor()} />
+                  <Tile to="/app-structure" label="App Structure" Icon={LayoutTemplate} colorClass={nextColor()} />
+                </>
               )}
             </div>
           </>
