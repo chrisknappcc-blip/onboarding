@@ -44,6 +44,11 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ section, action: 'remove', blockId, requestedManagerId })
     }),
+  uploadImage: (dataBase64, contentType) =>
+    call('upload-image', {
+      method: 'POST',
+      body: JSON.stringify({ dataBase64, contentType })
+    }),
   // Manager-only endpoints
   getTeamProgress: (trackKey, scope) =>
     call(`get-team-progress?track=${encodeURIComponent(trackKey)}${scope ? `&scope=${scope}` : ''}`),
