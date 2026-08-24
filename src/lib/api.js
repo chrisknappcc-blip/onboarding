@@ -71,6 +71,11 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ action: 'delete', name })
     }),
+  renamePreset: (oldName, newName) =>
+    call('manage-presets', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'rename', oldName, newName })
+    }),
   // Structure (tile order/labels per track)
   getStructure: (track) => call(`manage-structure?track=${encodeURIComponent(track)}`),
   saveStructure: (track, sections) =>
@@ -80,8 +85,10 @@ export const api = {
     }),
   // Named teams/sub-groups (e.g. Client Executive, Client Delivery)
   listTeams: () => call('manage-teams'),
-  addTeam: (label) =>
-    call('manage-teams', { method: 'POST', body: JSON.stringify({ action: 'add', label }) }),
+  addTeam: (label, parentKey) =>
+    call('manage-teams', { method: 'POST', body: JSON.stringify({ action: 'add', label, parentKey }) }),
+  editTeam: (key, label, parentKey) =>
+    call('manage-teams', { method: 'POST', body: JSON.stringify({ action: 'edit', key, label, parentKey }) }),
   removeTeam: (key) =>
     call('manage-teams', { method: 'POST', body: JSON.stringify({ action: 'remove', key }) }),
   // Manager-only endpoints
