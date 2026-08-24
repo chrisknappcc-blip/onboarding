@@ -54,6 +54,30 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ dataBase64, contentType })
     }),
+  // Presets - save/apply a full content bundle across all sections at once
+  listPresets: () => call('manage-presets'),
+  savePreset: (name, sourceManagerId) =>
+    call('manage-presets', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'save', name, sourceManagerId })
+    }),
+  applyPreset: (name, targetManagerId) =>
+    call('manage-presets', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'apply', name, targetManagerId })
+    }),
+  deletePreset: (name) =>
+    call('manage-presets', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'delete', name })
+    }),
+  // Structure (tile order/labels per track)
+  getStructure: (track) => call(`manage-structure?track=${encodeURIComponent(track)}`),
+  saveStructure: (track, sections) =>
+    call('manage-structure', {
+      method: 'POST',
+      body: JSON.stringify({ track, sections })
+    }),
   // Manager-only endpoints
   getTeamProgress: (trackKey, scope) =>
     call(`get-team-progress?track=${encodeURIComponent(trackKey)}${scope ? `&scope=${scope}` : ''}`),
