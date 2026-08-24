@@ -45,7 +45,7 @@ export default function Sidebar({ track, hasTeamAccess, isAdmin }) {
 
       <div className="flex-1 overflow-y-auto p-2">
         <div className="grid grid-cols-2 gap-1.5">
-          <Tile to="/" label="Home" Icon={Home} colorClass={nextColor()} wide end />
+          <Tile to="/intro" label="Intro - Start Here" Icon={Home} colorClass={nextColor()} wide end />
           {track.sections.map((s) => (
             <Tile
               key={s.key}
