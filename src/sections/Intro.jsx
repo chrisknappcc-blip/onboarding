@@ -7,9 +7,10 @@ import { ContentBlock } from './ContentSection.jsx';
 
 export const INTRO_CHAPTERS = [
   { key: 'intro-about', label: 'About the Company' },
-  { key: 'intro-structure', label: 'Company Structure' },
   { key: 'intro-offerings', label: 'Our Offerings' },
-  { key: 'intro-network', label: 'Who Else You Work With' }
+  { key: 'intro-structure', label: 'Company Structure' },
+  { key: 'intro-team', label: 'Team Structure' },
+  { key: 'intro-network', label: "Who Else You'll Work With" }
 ];
 
 export default function Intro() {

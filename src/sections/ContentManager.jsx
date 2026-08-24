@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
-import { Trash2, Plus, Library, Upload } from 'lucide-react';
+import { Trash2, Pencil, Plus, Library, Upload, X } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { useIdentity } from '../lib/identity.jsx';
 
 const SECTIONS = [
   { key: 'intro-about', label: 'Intro: About the Company', kind: 'blocks' },
-  { key: 'intro-structure', label: 'Intro: Company Structure', kind: 'blocks' },
   { key: 'intro-offerings', label: 'Intro: Our Offerings', kind: 'blocks' },
-  { key: 'intro-network', label: 'Intro: Who Else You Work With', kind: 'blocks' },
+  { key: 'intro-structure', label: 'Intro: Company Structure', kind: 'blocks' },
+  { key: 'intro-team', label: 'Intro: Team Structure', kind: 'blocks' },
+  { key: 'intro-network', label: 'Intro: Who Else You\'ll Work With', kind: 'blocks' },
   { key: 'playbook', label: 'Playbook', kind: 'blocks' },
   { key: 'gong-library', label: 'Gong Recordings', kind: 'blocks' },
   { key: 'app-walkthroughs', label: 'Tools We Use', kind: 'blocks' },
@@ -22,6 +23,7 @@ export default function ContentManager() {
   const [targetManagerId, setTargetManagerId] = useState('');
   const [data, setData] = useState(null); // { managerId, mine, library }
   const [error, setError] = useState(null);
+  const [editingBlock, setEditingBlock] = useState(null);
 
   const sectionConfig = SECTIONS.find((s) => s.key === section);
 
@@ -43,7 +45,7 @@ export default function ContentManager() {
       .catch((e) => setError(e.message));
   }
 
-  useEffect(() => { refresh(); }, [section, targetManagerId]);
+  useEffect(() => { refresh(); setEditingBlock(null); }, [section, targetManagerId]);
 
   async function addFromLibrary(blockId) {
     if (!blockId) return;
@@ -58,6 +60,7 @@ export default function ContentManager() {
   async function remove(blockId) {
     try {
       await api.removeContent(section, blockId, isAdmin ? targetManagerId : undefined);
+      if (editingBlock?.id === blockId) setEditingBlock(null);
       refresh();
     } catch (e) {
       setError(e.message);
@@ -115,11 +118,14 @@ export default function ContentManager() {
               data.mine.map((b, i) => (
                 <div
                   key={b.id}
-                  className={`flex items-center gap-3 px-4 py-3 ${i !== data.mine.length - 1 ? 'border-b border-border' : ''}`}
+                  className={`flex items-center gap-3 px-4 py-3 ${i !== data.mine.length - 1 ? 'border-b border-border' : ''} ${editingBlock?.id === b.id ? 'bg-navy/5' : ''}`}
                 >
                   <span className="flex-1 text-sm text-ink-900 truncate">
                     {sectionConfig.kind === 'tasks' ? b.text : (b.label || b.text || b.url)}
                   </span>
+                  <button onClick={() => setEditingBlock(b)} className="text-ink-300 hover:text-navy shrink-0">
+                    <Pencil size={15} />
+                  </button>
                   <button onClick={() => remove(b.id)} className="text-ink-300 hover:text-red-600 shrink-0">
                     <Trash2 size={16} />
                   </button>
@@ -145,12 +151,17 @@ export default function ContentManager() {
           )}
 
           <div className="mt-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-ink-300 mb-2">Add new</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-ink-300 mb-2">
+              {editingBlock ? 'Edit item' : 'Add new'}
+            </p>
             <ManualAddForm
+              key={editingBlock?.id || 'new'}
               kind={sectionConfig.kind}
               section={section}
               managerId={isAdmin ? targetManagerId : undefined}
-              onAdded={refresh}
+              editingBlock={editingBlock}
+              onSaved={() => { setEditingBlock(null); refresh(); }}
+              onCancelEdit={() => setEditingBlock(null)}
             />
           </div>
         </>
@@ -159,13 +170,14 @@ export default function ContentManager() {
   );
 }
 
-function ManualAddForm({ kind, section, managerId, onAdded }) {
-  const [type, setType] = useState('text');
-  const [text, setText] = useState('');
-  const [label, setLabel] = useState('');
-  const [url, setUrl] = useState('');
-  const [description, setDescription] = useState('');
-  const [thumbnail, setThumbnail] = useState('');
+function ManualAddForm({ kind, section, managerId, editingBlock, onSaved, onCancelEdit }) {
+  const isEditing = Boolean(editingBlock);
+  const [type, setType] = useState(editingBlock?.type === 'link' ? 'link' : 'text');
+  const [text, setText] = useState(editingBlock?.text || '');
+  const [label, setLabel] = useState(editingBlock?.label || '');
+  const [url, setUrl] = useState(editingBlock?.url || '');
+  const [description, setDescription] = useState(editingBlock?.description || '');
+  const [thumbnail, setThumbnail] = useState(editingBlock?.thumbnail || '');
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -205,9 +217,14 @@ function ManualAddForm({ kind, section, managerId, onAdded }) {
         : type === 'link'
           ? { type: 'link', label, url, description: description || undefined, thumbnail: thumbnail || undefined }
           : { type: 'text', text };
-      await api.addManualContent(section, block, managerId);
-      setText(''); setLabel(''); setUrl(''); setDescription(''); setThumbnail('');
-      onAdded();
+
+      if (isEditing) {
+        await api.editContent(section, editingBlock.id, block, managerId);
+      } else {
+        await api.addManualContent(section, block, managerId);
+        setText(''); setLabel(''); setUrl(''); setDescription(''); setThumbnail('');
+      }
+      onSaved();
     } catch (e) {
       setError(e.message);
     } finally {
@@ -304,13 +321,23 @@ function ManualAddForm({ kind, section, managerId, onAdded }) {
         </>
       )}
 
-      <button
-        onClick={submit}
-        disabled={saving || uploading || !canSubmit}
-        className="flex items-center gap-1.5 mt-3 px-4 py-2 bg-navy text-white text-sm font-medium rounded-lg hover:bg-navy-dark disabled:opacity-50"
-      >
-        <Plus size={15} /> {saving ? 'Adding...' : 'Add'}
-      </button>
+      <div className="flex items-center gap-2 mt-3">
+        <button
+          onClick={submit}
+          disabled={saving || uploading || !canSubmit}
+          className="flex items-center gap-1.5 px-4 py-2 bg-navy text-white text-sm font-medium rounded-lg hover:bg-navy-dark disabled:opacity-50"
+        >
+          <Plus size={15} /> {saving ? 'Saving...' : isEditing ? 'Save changes' : 'Add'}
+        </button>
+        {isEditing && (
+          <button
+            onClick={onCancelEdit}
+            className="flex items-center gap-1 px-3 py-2 text-sm text-ink-500 hover:text-ink-900"
+          >
+            <X size={14} /> Cancel
+          </button>
+        )}
+      </div>
     </div>
   );
 }
