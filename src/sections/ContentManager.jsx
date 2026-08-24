@@ -7,6 +7,7 @@ const SECTIONS = [
   { key: 'playbook', label: 'Playbook', kind: 'blocks' },
   { key: 'gong-library', label: 'Gong Recordings', kind: 'blocks' },
   { key: 'app-walkthroughs', label: 'Tools We Use', kind: 'blocks' },
+  { key: 'intranet', label: 'Intranet', kind: 'blocks' },
   { key: 'tasks', label: 'My Tasks (default checklist)', kind: 'tasks' }
 ];
 
@@ -92,6 +93,7 @@ export default function ContentManager() {
             {managers.filter((m) => m.email !== email).map((m) => (
               <option key={m.id} value={m.email}>{m.fullName || m.email}</option>
             ))}
+            <option value="shared">Organization-wide (everyone)</option>
           </select>
         )}
       </div>
