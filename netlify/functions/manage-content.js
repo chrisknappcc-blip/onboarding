@@ -1,5 +1,5 @@
 import { readJson, writeJson } from './utils/azureBlob.js';
-import { getUserEmail, hasTeamAccess, isAdmin } from './utils/auth.js';
+import { getUserEmail, getUserName, getUserTrack, hasTeamAccess, isAdmin } from './utils/auth.js';
 
 // Content model: each manager owns their own set of blocks per section,
 // stored at content/{managerEmail}/{section}.json as { title, blocks: [...] }.
@@ -13,13 +13,13 @@ function libraryKey(block) {
   return `${block.type}:${(block.text || '').trim().toLowerCase()}`;
 }
 
-async function upsertIntoLibrary(section, block) {
+async function upsertIntoLibrary(section, block, addedByName) {
   const path = `content/library/${section}.json`;
   const lib = await readJson(path, { blocks: [] });
   const key = libraryKey(block);
   const exists = lib.blocks.some((b) => libraryKey(b) === key);
   if (!exists) {
-    lib.blocks.push({ ...block, id: `lib-${Date.now()}-${Math.random().toString(36).slice(2, 6)}` });
+    lib.blocks.push({ ...block, addedByName, id: `lib-${Date.now()}-${Math.random().toString(36).slice(2, 6)}` });
     await writeJson(path, lib);
   }
 }
@@ -63,7 +63,8 @@ export async function handler(event, context) {
         };
         current.blocks.push(block);
         await writeJson(path, current);
-        await upsertIntoLibrary(section, block);
+        const addedByName = `${getUserName(context)} - ${getUserTrack(context).toUpperCase()}`;
+        await upsertIntoLibrary(section, block, addedByName);
         return { statusCode: 200, body: JSON.stringify({ ok: true, block }) };
       }
 
