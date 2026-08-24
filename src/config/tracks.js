@@ -19,6 +19,7 @@ export const TRACKS = {
     // Seed tasks - editable later via the task queue UI, this is just the
     // default checklist a new BDR starts with.
     defaultTasks: [
+      { id: 'intro-complete', title: 'Complete the Intro', section: 'intro' },
       { id: 'bdr-1', title: 'Read the BDR Playbook', section: 'playbook' },
       { id: 'bdr-2', title: 'Complete HubSpot walkthrough', section: 'hubspot-walkthrough' },
       { id: 'bdr-3', title: 'Watch 3 Gong calls tagged "discovery"', section: 'gong-library' },
@@ -39,6 +40,7 @@ export const TRACKS = {
       { key: 'task-queue', label: 'My Tasks', icon: 'ListChecks' }
     ],
     defaultTasks: [
+      { id: 'intro-complete', title: 'Complete the Intro', section: 'intro' },
       { id: 'ae-1', title: 'Read the Account Executive Orientation Guide', section: 'playbook' },
       { id: 'ae-2', title: 'Complete HubSpot walkthrough', section: 'hubspot-walkthrough' },
       { id: 'ae-3', title: 'Watch 3 Gong calls tagged "demo"', section: 'gong-library' },
