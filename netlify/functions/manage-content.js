@@ -83,6 +83,14 @@ export async function handler(event, context) {
         return { statusCode: 200, body: JSON.stringify({ ok: true }) };
       }
 
+      if (action === 'edit') {
+        const idx = current.blocks.findIndex((b) => b.id === body.blockId);
+        if (idx === -1) return { statusCode: 404, body: JSON.stringify({ error: 'Item not found' }) };
+        current.blocks[idx] = { ...current.blocks[idx], ...body.block, id: current.blocks[idx].id };
+        await writeJson(path, current);
+        return { statusCode: 200, body: JSON.stringify({ ok: true, block: current.blocks[idx] }) };
+      }
+
       return { statusCode: 400, body: JSON.stringify({ error: `Unknown action: ${action}` }) };
     }
 
