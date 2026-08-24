@@ -42,6 +42,8 @@ export async function handler(event, context) {
     if (idx >= 0) {
       current.tasks[idx].done = done;
       if (canSetStar && starred !== undefined) current.tasks[idx].starred = starred;
+      if (title) current.tasks[idx].title = title;
+      if (section) current.tasks[idx].section = section;
     } else {
       current.tasks.push({
         id: taskId,
