@@ -90,6 +90,22 @@ export function highlight(text, query) {
   );
 }
 
+// Lightweight formatting for text blocks: **bold** and __underline__.
+// Deliberately not full markdown - just the two things people actually
+// reach for when writing playbook content.
+function renderFormattedText(text, query) {
+  const parts = text.split(/(\*\*.+?\*\*|__.+?__)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={i} className="font-semibold text-ink-900">{highlight(part.slice(2, -2), query)}</strong>;
+    }
+    if (part.startsWith('__') && part.endsWith('__')) {
+      return <u key={i}>{highlight(part.slice(2, -2), query)}</u>;
+    }
+    return <span key={i}>{highlight(part, query)}</span>;
+  });
+}
+
 function faviconFor(url) {
   try {
     const domain = new URL(url).hostname;
@@ -103,7 +119,7 @@ export function ContentBlock({ block, query }) {
   if (block.type === 'text') {
     return (
       <p className="text-sm text-ink-700 leading-relaxed whitespace-pre-wrap">
-        {highlight(block.text, query)}
+        {renderFormattedText(block.text, query)}
       </p>
     );
   }
@@ -135,6 +151,22 @@ export function ContentBlock({ block, query }) {
     return (
       <div className="aspect-video bg-ink-900 rounded-xl overflow-hidden">
         <iframe src={block.embedUrl} title={block.label || 'video'} className="w-full h-full" allowFullScreen />
+      </div>
+    );
+  }
+  if (block.type === 'table') {
+    return (
+      <div>
+        {block.title && <p className="text-xs font-semibold uppercase tracking-wide text-ink-300 mb-2">{block.title}</p>}
+        <div className="bg-card border border-border rounded-xl overflow-hidden">
+          {(block.rows || []).map((row, i) => (
+            <div key={i} className={`px-4 py-3.5 ${i !== block.rows.length - 1 ? 'border-b border-border' : ''}`}>
+              <p className="text-sm font-semibold text-ink-900">{row.label}</p>
+              {row.sublabel && <p className="text-xs text-navy font-medium mt-0.5">{row.sublabel}</p>}
+              {row.description && <p className="text-sm text-ink-700 mt-1 leading-relaxed">{row.description}</p>}
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

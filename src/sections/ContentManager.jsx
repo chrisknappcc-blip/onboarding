@@ -248,7 +248,7 @@ function ManualAddForm({ kind, section, managerId, onAdded }) {
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder="Paragraph of playbook content..."
+              placeholder="Paragraph of playbook content... use **bold** and __underline__ for emphasis"
               rows={3}
               className="w-full text-sm border border-border rounded-lg px-3 py-2"
             />
