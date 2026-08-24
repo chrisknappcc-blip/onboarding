@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { Circle, Star, ArrowRight } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { useIdentity } from '../lib/identity.jsx';
-import Tile from '../components/Tile.jsx';
 
 export default function Dashboard({ track }) {
   const { track: trackKey, user } = useIdentity();
@@ -40,7 +39,7 @@ export default function Dashboard({ track }) {
     : [];
 
   return (
-    <div className="max-w-3xl">
+    <div className="max-w-2xl">
       <h1 className="font-display text-2xl font-semibold text-ink-900">
         Welcome{firstName ? `, ${firstName}` : ''}
       </h1>
@@ -64,30 +63,21 @@ export default function Dashboard({ track }) {
           </div>
         ) : (
           <div className="mt-3 bg-card border border-border rounded-xl overflow-hidden">
-            {outstanding.slice(0, 6).map((t, i) => (
+            {outstanding.slice(0, 8).map((t, i) => (
               <button
                 key={t.id}
                 onClick={() => toggleTask(t.id, true)}
                 className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-surface/60 transition-colors ${
-                  i !== Math.min(outstanding.length, 6) - 1 ? 'border-b border-border' : ''
+                  i !== Math.min(outstanding.length, 8) - 1 ? 'border-b border-border' : ''
                 }`}
               >
                 <Circle className="text-ink-300 shrink-0" size={18} />
                 <span className="flex-1 text-sm text-ink-900">{t.title}</span>
-                {t.starred && <Star size={15} className="text-accent fill-accent shrink-0" />}
+                {t.starred && <Star size={15} className="text-lime fill-lime shrink-0" />}
               </button>
             ))}
           </div>
         )}
-      </section>
-
-      <section className="mt-8">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-300 mb-3">Onboarding Materials</h2>
-        <div className="grid grid-cols-2 gap-2.5">
-          {track.sections.map((s, i) => (
-            <Tile key={s.key} number={i + 1} label={s.label} to={`/${s.key}`} />
-          ))}
-        </div>
       </section>
     </div>
   );
