@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Trash2, Pencil, Plus, Library, Upload, X, Save, FolderInput } from 'lucide-react';
+import { Trash2, Pencil, Plus, Library, Upload, X, Save, FolderInput, Check } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { useIdentity } from '../lib/identity.jsx';
 
@@ -21,7 +21,6 @@ export default function ContentManager() {
   const [section, setSection] = useState('playbook');
   const [managers, setManagers] = useState([]);
   const [teams, setTeams] = useState([]);
-  const [newTeamLabel, setNewTeamLabel] = useState('');
   const [target, setTarget] = useState(''); // '' = me, 'team:key', an email, or 'shared'
   const [data, setData] = useState(null); // { managerId, mine, library }
   const [error, setError] = useState(null);
@@ -44,17 +43,6 @@ export default function ContentManager() {
 
   function refreshTeams() {
     api.listTeams().then((r) => setTeams(r.teams || [])).catch(() => {});
-  }
-
-  async function addTeam() {
-    if (!newTeamLabel.trim()) return;
-    try {
-      await api.addTeam(newTeamLabel.trim());
-      setNewTeamLabel('');
-      refreshTeams();
-    } catch (e) {
-      setError(e.message);
-    }
   }
 
   function refresh() {
@@ -116,7 +104,12 @@ export default function ContentManager() {
           <option value="">Me ({email})</option>
           {teams.length > 0 && (
             <optgroup label="Teams">
-              {teams.map((t) => <option key={t.key} value={`team:${t.key}`}>{t.label}</option>)}
+              {teams.filter((t) => !t.parentKey).flatMap((t) => [
+                <option key={t.key} value={`team:${t.key}`}>{t.label}</option>,
+                ...teams.filter((c) => c.parentKey === t.key).map((c) => (
+                  <option key={c.key} value={`team:${c.key}`}>{'\u00A0\u00A0\u00A0\u00A0↳ ' + c.label}</option>
+                ))
+              ])}
             </optgroup>
           )}
           {isAdmin && (
@@ -134,24 +127,16 @@ export default function ContentManager() {
           )}
           {isAdmin && <option value="shared">Organization-wide (everyone)</option>}
         </select>
-        <div className="flex items-center gap-1.5">
-          <input
-            value={newTeamLabel}
-            onChange={(e) => setNewTeamLabel(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && addTeam()}
-            placeholder="+ New team name"
-            className="text-sm border border-border rounded-lg px-3 py-2 w-40"
-          />
-          <button onClick={addTeam} className="px-2.5 py-2 bg-navy text-white text-xs font-medium rounded-lg hover:bg-navy-dark">
-            Add
-          </button>
-        </div>
       </div>
 
       {error && <p className="text-sm text-red-600 mt-3">{error}</p>}
 
       {isAdmin && (
         <PresetsPanel sourceManagerId={target || email} teams={teams} managers={managers} email={email} onApplied={refresh} />
+      )}
+
+      {isAdmin && (
+        <TeamsManagerPanel teams={teams} onChanged={refreshTeams} />
       )}
 
       {!data ? (
@@ -228,6 +213,8 @@ function PresetsPanel({ sourceManagerId, teams, managers, email, onApplied }) {
   const [applying, setApplying] = useState(false);
   const [error, setError] = useState(null);
   const [open, setOpen] = useState(false);
+  const [renamingKey, setRenamingKey] = useState(null);
+  const [renameValue, setRenameValue] = useState('');
 
   function refresh() {
     api.listPresets().then((r) => setPresets(r.presets || [])).catch((e) => setError(e.message));
@@ -247,6 +234,20 @@ function PresetsPanel({ sourceManagerId, teams, managers, email, onApplied }) {
       setError(e.message);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function submitRename(oldName) {
+    if (!renameValue.trim() || renameValue.trim() === oldName) {
+      setRenamingKey(null);
+      return;
+    }
+    try {
+      await api.renamePreset(oldName, renameValue.trim());
+      setRenamingKey(null);
+      refresh();
+    } catch (e) {
+      setError(e.message);
     }
   }
 
@@ -318,8 +319,25 @@ function PresetsPanel({ sourceManagerId, teams, managers, email, onApplied }) {
           <div className="space-y-1.5">
             {presets.map((p) => (
               <div key={p.name} className="flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-2">
-                <span className="flex-1 text-sm text-ink-900">{p.name}</span>
-                <button onClick={() => removePreset(p.name)} className="text-ink-300 hover:text-red-600"><Trash2 size={14} /></button>
+                {renamingKey === p.name ? (
+                  <>
+                    <input
+                      value={renameValue}
+                      onChange={(e) => setRenameValue(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && submitRename(p.name)}
+                      autoFocus
+                      className="flex-1 text-sm border border-navy/40 rounded px-2 py-1"
+                    />
+                    <button onClick={() => submitRename(p.name)} className="text-navy hover:text-navy-dark"><Check size={14} /></button>
+                    <button onClick={() => setRenamingKey(null)} className="text-ink-300 hover:text-ink-700"><X size={14} /></button>
+                  </>
+                ) : (
+                  <>
+                    <span className="flex-1 text-sm text-ink-900">{p.name}</span>
+                    <button onClick={() => { setRenamingKey(p.name); setRenameValue(p.name); }} className="text-ink-300 hover:text-navy"><Pencil size={13} /></button>
+                    <button onClick={() => removePreset(p.name)} className="text-ink-300 hover:text-red-600"><Trash2 size={14} /></button>
+                  </>
+                )}
               </div>
             ))}
           </div>
@@ -347,6 +365,150 @@ function PresetsPanel({ sourceManagerId, teams, managers, email, onApplied }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function TeamsManagerPanel({ teams, onChanged }) {
+  const [open, setOpen] = useState(false);
+  const [newLabel, setNewLabel] = useState('');
+  const [newParent, setNewParent] = useState('');
+  const [editingKey, setEditingKey] = useState(null);
+  const [editLabel, setEditLabel] = useState('');
+  const [editParent, setEditParent] = useState('');
+  const [error, setError] = useState(null);
+
+  const topLevel = teams.filter((t) => !t.parentKey);
+  const childrenOf = (key) => teams.filter((t) => t.parentKey === key);
+
+  async function add() {
+    if (!newLabel.trim()) return;
+    try {
+      await api.addTeam(newLabel.trim(), newParent || undefined);
+      setNewLabel('');
+      setNewParent('');
+      onChanged();
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  function startEdit(t) {
+    setEditingKey(t.key);
+    setEditLabel(t.label);
+    setEditParent(t.parentKey || '');
+  }
+
+  async function saveEdit(key) {
+    try {
+      await api.editTeam(key, editLabel.trim(), editParent || null);
+      setEditingKey(null);
+      onChanged();
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  async function remove(key) {
+    try {
+      await api.removeTeam(key);
+      onChanged();
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  function TeamRow({ t, indent }) {
+    const isEditing = editingKey === t.key;
+    return (
+      <div className="border-b border-border last:border-b-0">
+        <div className="flex items-center gap-2 px-3 py-2" style={{ paddingLeft: `${12 + indent * 20}px` }}>
+          {isEditing ? (
+            <>
+              <input
+                value={editLabel}
+                onChange={(e) => setEditLabel(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && saveEdit(t.key)}
+                autoFocus
+                className="flex-1 text-sm border border-navy/40 rounded px-2 py-1"
+              />
+              <select
+                value={editParent}
+                onChange={(e) => setEditParent(e.target.value)}
+                className="text-xs border border-border rounded px-1.5 py-1 bg-white"
+              >
+                <option value="">No parent (top-level)</option>
+                {teams.filter((o) => o.key !== t.key).map((o) => (
+                  <option key={o.key} value={o.key}>Under: {o.label}</option>
+                ))}
+              </select>
+              <button onClick={() => saveEdit(t.key)} className="text-navy hover:text-navy-dark"><Check size={14} /></button>
+              <button onClick={() => setEditingKey(null)} className="text-ink-300 hover:text-ink-700"><X size={14} /></button>
+            </>
+          ) : (
+            <>
+              <span className="flex-1 text-sm text-ink-900">{t.label}</span>
+              <button onClick={() => startEdit(t)} className="text-ink-300 hover:text-navy"><Pencil size={13} /></button>
+              <button onClick={() => remove(t.key)} className="text-ink-300 hover:text-red-600"><Trash2 size={14} /></button>
+            </>
+          )}
+        </div>
+        {childrenOf(t.key).map((child) => <TeamRow key={child.key} t={child} indent={indent + 1} />)}
+      </div>
+    );
+  }
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="flex items-center gap-1.5 mt-3 text-sm font-medium text-navy hover:text-navy-dark"
+      >
+        <FolderInput size={15} /> Manage teams (rename, remove, organize into sub-teams)
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-4 p-4 bg-navy/5 border border-navy/20 rounded-xl">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold text-ink-900">Teams</p>
+        <button onClick={() => setOpen(false)} className="text-ink-300 hover:text-ink-700"><X size={15} /></button>
+      </div>
+      <p className="text-xs text-ink-500 mt-1">
+        Give a team a parent to nest it — e.g. "Client Executive" and "Client Delivery" under "Client Success."
+      </p>
+
+      {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
+
+      <div className="mt-3 bg-card border border-border rounded-lg overflow-hidden">
+        {topLevel.length === 0 ? (
+          <div className="p-4 text-center text-sm text-ink-300">No teams yet.</div>
+        ) : (
+          topLevel.map((t) => <TeamRow key={t.key} t={t} indent={0} />)
+        )}
+      </div>
+
+      <div className="flex gap-2 mt-3">
+        <input
+          value={newLabel}
+          onChange={(e) => setNewLabel(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && add()}
+          placeholder="New team name"
+          className="flex-1 text-sm border border-border rounded-lg px-3 py-2"
+        />
+        <select
+          value={newParent}
+          onChange={(e) => setNewParent(e.target.value)}
+          className="text-sm border border-border rounded-lg px-2 py-2 bg-white"
+        >
+          <option value="">No parent (top-level)</option>
+          {teams.map((t) => <option key={t.key} value={t.key}>Under: {t.label}</option>)}
+        </select>
+        <button onClick={add} className="px-3 py-2 bg-navy text-white text-xs font-medium rounded-lg hover:bg-navy-dark">
+          Add
+        </button>
+      </div>
     </div>
   );
 }

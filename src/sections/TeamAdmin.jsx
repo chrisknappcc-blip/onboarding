@@ -260,6 +260,9 @@ export default function TeamAdmin() {
           <span className="text-xs text-ink-300">Existing: {teams.map((t) => t.label).join(', ')}</span>
         )}
       </div>
+      <p className="text-xs text-ink-300 mt-1">
+        For renaming, removing, or nesting teams into sub-structures (e.g. Client Executive under Client Success), use the fuller team manager in Content Library.
+      </p>
 
       <div className="mt-3">
         <AddMemberForm managers={managers} teams={teams} onCreated={refresh} />
@@ -325,7 +328,10 @@ export default function TeamAdmin() {
                 className="text-sm border border-border rounded-lg px-2 py-1.5 bg-white"
               >
                 <option value="">— none —</option>
-                {teams.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
+                {teams.map((t) => {
+                  const parent = teams.find((p) => p.key === t.parentKey);
+                  return <option key={t.key} value={t.key}>{parent ? `${t.label} (under ${parent.label})` : t.label}</option>;
+                })}
               </select>
 
               {d.role === 'admin' ? (
