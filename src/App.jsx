@@ -15,6 +15,7 @@ import Intranet from './sections/Intranet.jsx';
 import TaskQueue from './sections/TaskQueue.jsx';
 import TeamProgress from './sections/TeamProgress.jsx';
 import TeamAdmin from './sections/TeamAdmin.jsx';
+import ContentManager from './sections/ContentManager.jsx';
 
 export default function App() {
   const { user, initialized, login } = useIdentity();
@@ -80,6 +81,9 @@ function AuthedApp() {
         <Route path="/task-queue" element={<TaskQueue trackKey={trackKey} track={track} />} />
         {hasTeamAccess && (
           <Route path="/team-progress" element={<TeamProgress trackKey={trackKey} />} />
+        )}
+        {hasTeamAccess && (
+          <Route path="/content-library" element={<ContentManager />} />
         )}
         {isAdmin && (
           <Route path="/team-admin" element={<TeamAdmin />} />
