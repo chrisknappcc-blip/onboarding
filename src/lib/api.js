@@ -44,6 +44,11 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ section, action: 'remove', blockId, requestedManagerId })
     }),
+  editContent: (section, blockId, block, requestedManagerId) =>
+    call('manage-content', {
+      method: 'POST',
+      body: JSON.stringify({ section, action: 'edit', blockId, block, requestedManagerId })
+    }),
   uploadImage: (dataBase64, contentType) =>
     call('upload-image', {
       method: 'POST',
