@@ -8,52 +8,69 @@ const ICONS = {
   BookOpen, MousePointerClick, PlayCircle, LayoutGrid, Globe, ListChecks
 };
 
-function NavItem({ to, label, Icon }) {
+// Metro/Windows Phone tiles cycle through the brand palette rather than
+// every tile being the same color - that alternating color-block look is
+// the whole visual signature of that style.
+const TILE_COLORS = ['bg-navy', 'bg-ccblue', 'bg-teal', 'bg-lime'];
+
+function Tile({ to, label, Icon, colorClass, wide, end }) {
   return (
     <NavLink
       to={to}
-      end={to === '/'}
+      end={end}
       className={({ isActive }) =>
-        `group flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors relative ${
-          isActive ? 'bg-navy/[0.07] text-navy' : 'text-ink-500 hover:bg-ink-900/[0.04] hover:text-ink-900'
-        }`
+        `group relative flex flex-col justify-between p-3 ${colorClass} text-white transition-transform hover:scale-[0.97] active:scale-[0.94] ${
+          wide ? 'col-span-2 aspect-[3.6/1]' : 'aspect-square'
+        } ${isActive ? 'ring-4 ring-white ring-inset' : ''}`
       }
     >
-      {({ isActive }) => (
-        <>
-          <span className={`absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full transition-colors ${isActive ? 'bg-accent' : 'bg-transparent'}`} />
-          <Icon size={18} strokeWidth={isActive ? 2.25 : 1.75} />
-          {label}
-        </>
-      )}
+      <Icon size={22} strokeWidth={1.75} className="text-white/90" />
+      <span className="text-sm font-medium leading-tight text-white">{label}</span>
     </NavLink>
   );
 }
 
 export default function Sidebar({ track, hasTeamAccess, isAdmin }) {
+  let colorIdx = 0;
+  const nextColor = () => TILE_COLORS[colorIdx++ % TILE_COLORS.length];
+
   return (
-    <aside className="w-64 shrink-0 border-r border-border bg-white flex flex-col">
-      <div className="h-16 flex items-center px-6 border-b border-border">
-        <div className="w-8 h-8 rounded-lg bg-navy flex items-center justify-center mr-2.5">
-          <span className="text-white font-display font-semibold text-sm">O</span>
-        </div>
-        <span className="font-display font-semibold text-ink-900">Onboarding Hub</span>
+    <aside className="w-1/4 min-w-[220px] max-w-[340px] shrink-0 bg-white border-r border-border flex flex-col">
+      <div className="h-16 flex items-center px-5 border-b border-border shrink-0">
+        <span className="font-display font-semibold text-navy">
+          <span className="text-lime">care</span>
+          <span className="text-teal">continuity</span>
+        </span>
       </div>
-      <nav className="flex-1 p-3 space-y-0.5">
-        <NavItem to="/" label="Home" Icon={Home} />
-        {track.sections.map((s) => (
-          <NavItem key={s.key} to={`/${s.key}`} label={s.label} Icon={ICONS[s.icon] || Home} />
-        ))}
+
+      <div className="flex-1 overflow-y-auto p-2">
+        <div className="grid grid-cols-2 gap-1.5">
+          <Tile to="/" label="Home" Icon={Home} colorClass={nextColor()} wide end />
+          {track.sections.map((s) => (
+            <Tile
+              key={s.key}
+              to={`/${s.key}`}
+              label={s.label}
+              Icon={ICONS[s.icon] || Home}
+              colorClass={nextColor()}
+            />
+          ))}
+        </div>
+
         {hasTeamAccess && (
           <>
-            <div className="pt-5 pb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wide text-ink-300">
+            <div className="pt-4 pb-1.5 px-1 text-[11px] font-semibold uppercase tracking-wide text-ink-300">
               Team
             </div>
-            <NavItem to="/team-progress" label="Team Progress" Icon={Users2} />
-            {isAdmin && <NavItem to="/team-admin" label="Manage Access" Icon={ShieldCheck} />}
+            <div className="grid grid-cols-2 gap-1.5">
+              <Tile to="/team-progress" label="Team Progress" Icon={Users2} colorClass={nextColor()} />
+              {isAdmin && (
+                <Tile to="/team-admin" label="Manage Access" Icon={ShieldCheck} colorClass={nextColor()} />
+              )}
+            </div>
           </>
         )}
-      </nav>
+      </div>
     </aside>
   );
 }

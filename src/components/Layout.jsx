@@ -15,7 +15,7 @@ export default function Layout({ track, hasTeamAccess, isAdmin, children }) {
         <header className="h-16 border-b border-border bg-white flex items-center justify-between px-8 shrink-0">
           <span className="text-sm font-medium text-ink-500">{track.label}</span>
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-navy/[0.08] text-navy text-xs font-semibold flex items-center justify-center">
+            <div className="w-8 h-8 rounded-full bg-navy/10 text-navy text-xs font-semibold flex items-center justify-center">
               {initials}
             </div>
             <button onClick={logout} className="text-sm text-ink-300 hover:text-ink-700 transition-colors">
