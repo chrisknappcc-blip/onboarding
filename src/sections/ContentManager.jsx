@@ -160,6 +160,8 @@ function ManualAddForm({ kind, section, managerId, onAdded }) {
   const [text, setText] = useState('');
   const [label, setLabel] = useState('');
   const [url, setUrl] = useState('');
+  const [description, setDescription] = useState('');
+  const [thumbnail, setThumbnail] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
@@ -170,10 +172,10 @@ function ManualAddForm({ kind, section, managerId, onAdded }) {
       const block = kind === 'tasks'
         ? { type: 'task', text }
         : type === 'link'
-          ? { type: 'link', label, url }
+          ? { type: 'link', label, url, description: description || undefined, thumbnail: thumbnail || undefined }
           : { type: 'text', text };
       await api.addManualContent(section, block, managerId);
-      setText(''); setLabel(''); setUrl('');
+      setText(''); setLabel(''); setUrl(''); setDescription(''); setThumbnail('');
       onAdded();
     } catch (e) {
       setError(e.message);
@@ -231,6 +233,19 @@ function ManualAddForm({ kind, section, managerId, onAdded }) {
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="URL"
+                className="w-full text-sm border border-border rounded-lg px-3 py-2"
+              />
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Short description or note about this link (optional)"
+                rows={2}
+                className="w-full text-sm border border-border rounded-lg px-3 py-2"
+              />
+              <input
+                value={thumbnail}
+                onChange={(e) => setThumbnail(e.target.value)}
+                placeholder="Custom thumbnail image URL (optional - defaults to the site's favicon)"
                 className="w-full text-sm border border-border rounded-lg px-3 py-2"
               />
             </div>

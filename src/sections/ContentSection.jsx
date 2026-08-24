@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search, X } from 'lucide-react';
+import { Search, X, Link as LinkIcon } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { useIdentity } from '../lib/identity.jsx';
 
@@ -90,6 +90,15 @@ function highlight(text, query) {
   );
 }
 
+function faviconFor(url) {
+  try {
+    const domain = new URL(url).hostname;
+    return `https://www.google.com/s2/favicons?sz=64&domain=${domain}`;
+  } catch {
+    return null;
+  }
+}
+
 function ContentBlock({ block, query }) {
   if (block.type === 'text') {
     return (
@@ -99,10 +108,26 @@ function ContentBlock({ block, query }) {
     );
   }
   if (block.type === 'link') {
+    const thumb = block.thumbnail || faviconFor(block.url);
+    let domain = '';
+    try { domain = new URL(block.url).hostname; } catch {}
     return (
       <a href={block.url} target="_blank" rel="noreferrer"
-         className="block p-3.5 bg-card border border-border rounded-xl text-sm text-navy font-medium hover:border-navy/30 transition-colors">
-        {highlight(block.label || block.url, query)}
+         className="flex gap-3 p-3.5 bg-card border border-border rounded-xl hover:border-navy/30 transition-colors">
+        <div className="w-11 h-11 rounded-lg bg-surface border border-border flex items-center justify-center shrink-0 overflow-hidden">
+          {thumb ? (
+            <img src={thumb} alt="" className="w-6 h-6 object-contain" onError={(e) => { e.target.style.display = 'none'; }} />
+          ) : (
+            <LinkIcon size={18} className="text-ink-300" />
+          )}
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-navy truncate">{highlight(block.label || block.url, query)}</p>
+          {block.description && (
+            <p className="text-xs text-ink-500 mt-0.5 line-clamp-2">{highlight(block.description, query)}</p>
+          )}
+          {domain && <p className="text-[11px] text-ink-300 mt-0.5">{domain}</p>}
+        </div>
       </a>
     );
   }
