@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Trash2, Plus, Library } from 'lucide-react';
+import { Trash2, Plus, Library, Upload } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { useIdentity } from '../lib/identity.jsx';
 
@@ -162,8 +162,35 @@ function ManualAddForm({ kind, section, managerId, onAdded }) {
   const [url, setUrl] = useState('');
   const [description, setDescription] = useState('');
   const [thumbnail, setThumbnail] = useState('');
+  const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+
+  async function handleFileSelect(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      setError('Image is too large - please use one under 2MB');
+      return;
+    }
+    setUploading(true);
+    setError(null);
+    try {
+      const dataBase64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const { url: uploadedUrl } = await api.uploadImage(dataBase64, file.type);
+      setThumbnail(uploadedUrl);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  }
 
   async function submit() {
     setSaving(true);
@@ -242,12 +269,32 @@ function ManualAddForm({ kind, section, managerId, onAdded }) {
                 rows={2}
                 className="w-full text-sm border border-border rounded-lg px-3 py-2"
               />
-              <input
-                value={thumbnail}
-                onChange={(e) => setThumbnail(e.target.value)}
-                placeholder="Custom thumbnail image URL (optional - defaults to the site's favicon)"
-                className="w-full text-sm border border-border rounded-lg px-3 py-2"
-              />
+
+              <div className="border border-border rounded-lg p-3">
+                <p className="text-xs font-medium text-ink-500 mb-2">Thumbnail (optional - defaults to the site's favicon)</p>
+                <div className="flex items-center gap-3">
+                  {thumbnail && (
+                    <img src={thumbnail} alt="" className="w-10 h-10 rounded object-cover border border-border shrink-0" />
+                  )}
+                  <label className="flex items-center gap-1.5 px-3 py-1.5 bg-surface text-ink-700 text-xs font-medium rounded-lg cursor-pointer hover:bg-border">
+                    <Upload size={13} />
+                    {uploading ? 'Uploading...' : thumbnail ? 'Replace image' : 'Upload image'}
+                    <input type="file" accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml" className="hidden" onChange={handleFileSelect} disabled={uploading} />
+                  </label>
+                  {thumbnail && (
+                    <button onClick={() => setThumbnail('')} className="text-xs text-ink-300 hover:text-red-600">Remove</button>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-xs text-ink-300">or paste a URL:</span>
+                  <input
+                    value={thumbnail.startsWith('/.netlify') ? '' : thumbnail}
+                    onChange={(e) => setThumbnail(e.target.value)}
+                    placeholder="https://..."
+                    className="flex-1 text-xs border border-border rounded-lg px-2 py-1.5"
+                  />
+                </div>
+              </div>
             </div>
           )}
         </>
@@ -255,7 +302,7 @@ function ManualAddForm({ kind, section, managerId, onAdded }) {
 
       <button
         onClick={submit}
-        disabled={saving || !canSubmit}
+        disabled={saving || uploading || !canSubmit}
         className="flex items-center gap-1.5 mt-3 px-4 py-2 bg-navy text-white text-sm font-medium rounded-lg hover:bg-navy-dark disabled:opacity-50"
       >
         <Plus size={15} /> {saving ? 'Adding...' : 'Add'}
