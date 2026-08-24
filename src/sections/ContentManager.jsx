@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Trash2, Pencil, Plus, Library, Upload, X } from 'lucide-react';
+import { Trash2, Pencil, Plus, Library, Upload, X, Save, FolderInput } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { useIdentity } from '../lib/identity.jsx';
 
@@ -107,6 +107,10 @@ export default function ContentManager() {
 
       {error && <p className="text-sm text-red-600 mt-3">{error}</p>}
 
+      {isAdmin && (
+        <PresetsPanel targetManagerId={targetManagerId} managers={managers} email={email} onApplied={refresh} />
+      )}
+
       {!data ? (
         <p className="text-sm text-ink-300 mt-4">Loading...</p>
       ) : (
@@ -144,7 +148,9 @@ export default function ContentManager() {
               >
                 <option value="" disabled>Select something someone else already added...</option>
                 {libraryOptions.map((b) => (
-                  <option key={b.id} value={b.id}>{b.label || b.text || b.url}</option>
+                  <option key={b.id} value={b.id}>
+                    {b.label || b.text || b.url}{b.addedByName ? ` — ${b.addedByName}` : ''}
+                  </option>
                 ))}
               </select>
             </div>
@@ -165,6 +171,137 @@ export default function ContentManager() {
             />
           </div>
         </>
+      )}
+    </div>
+  );
+}
+
+function PresetsPanel({ targetManagerId, managers, email, onApplied }) {
+  const [presets, setPresets] = useState([]);
+  const [newName, setNewName] = useState('');
+  const [applyName, setApplyName] = useState('');
+  const [applyTarget, setApplyTarget] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [applying, setApplying] = useState(false);
+  const [error, setError] = useState(null);
+  const [open, setOpen] = useState(false);
+
+  function refresh() {
+    api.listPresets().then((r) => setPresets(r.presets || [])).catch((e) => setError(e.message));
+  }
+
+  useEffect(() => { if (open) refresh(); }, [open]);
+
+  async function savePreset() {
+    if (!newName.trim()) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await api.savePreset(newName.trim(), targetManagerId);
+      setNewName('');
+      refresh();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function applyPreset() {
+    if (!applyName || !applyTarget) return;
+    setApplying(true);
+    setError(null);
+    try {
+      await api.applyPreset(applyName, applyTarget);
+      onApplied();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setApplying(false);
+    }
+  }
+
+  async function removePreset(name) {
+    try {
+      await api.deletePreset(name);
+      refresh();
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="flex items-center gap-1.5 mt-4 text-sm font-medium text-navy hover:text-navy-dark"
+      >
+        <FolderInput size={15} /> Presets (save/apply a full content bundle across every section)
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-4 p-4 bg-navy/5 border border-navy/20 rounded-xl">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold text-ink-900">Presets</p>
+        <button onClick={() => setOpen(false)} className="text-ink-300 hover:text-ink-700"><X size={15} /></button>
+      </div>
+      <p className="text-xs text-ink-500 mt-1">
+        A preset snapshots everything (Intro chapters, Playbook, Gong, Tools, Tasks) for the person selected above, under a name. Apply it to instantly set up someone else the same way.
+      </p>
+
+      {error && <p className="text-sm text-red-600 mt-2">{error}</p>}
+
+      <div className="flex gap-2 mt-3">
+        <input
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          placeholder="Name this bundle (e.g. 'BDR Standard')"
+          className="flex-1 text-sm border border-border rounded-lg px-3 py-2"
+        />
+        <button
+          onClick={savePreset}
+          disabled={saving || !newName.trim()}
+          className="flex items-center gap-1.5 px-3 py-2 bg-navy text-white text-xs font-medium rounded-lg hover:bg-navy-dark disabled:opacity-50"
+        >
+          <Save size={13} /> {saving ? 'Saving...' : 'Save current as preset'}
+        </button>
+      </div>
+
+      {presets.length > 0 && (
+        <div className="mt-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-ink-300 mb-2">Apply a saved preset</p>
+          <div className="space-y-1.5">
+            {presets.map((p) => (
+              <div key={p.name} className="flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-2">
+                <span className="flex-1 text-sm text-ink-900">{p.name}</span>
+                <button onClick={() => removePreset(p.name)} className="text-ink-300 hover:text-red-600"><Trash2 size={14} /></button>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2 mt-2">
+            <select value={applyName} onChange={(e) => setApplyName(e.target.value)} className="text-sm border border-border rounded-lg px-2 py-2 bg-white">
+              <option value="">Preset...</option>
+              {presets.map((p) => <option key={p.name} value={p.name}>{p.name}</option>)}
+            </select>
+            <select value={applyTarget} onChange={(e) => setApplyTarget(e.target.value)} className="flex-1 text-sm border border-border rounded-lg px-2 py-2 bg-white">
+              <option value="">Apply to...</option>
+              <option value={email}>Me ({email})</option>
+              {managers.filter((m) => m.email !== email).map((m) => (
+                <option key={m.id} value={m.email}>{m.fullName || m.email}</option>
+              ))}
+              <option value="shared">Organization-wide</option>
+            </select>
+            <button
+              onClick={applyPreset}
+              disabled={applying || !applyName || !applyTarget}
+              className="px-3 py-2 bg-navy text-white text-xs font-medium rounded-lg hover:bg-navy-dark disabled:opacity-50"
+            >
+              {applying ? 'Applying...' : 'Apply'}
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
