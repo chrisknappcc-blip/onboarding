@@ -24,15 +24,15 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ track: trackKey, taskId, done, ...extra })
     }),
-  getContent: (trackKey, section, managerId) =>
-    call(`get-content?track=${encodeURIComponent(trackKey)}&section=${encodeURIComponent(section)}${managerId ? `&managerId=${encodeURIComponent(managerId)}` : ''}`),
+  getContent: (trackKey, section, managerId, team) =>
+    call(`get-content?track=${encodeURIComponent(trackKey)}&section=${encodeURIComponent(section)}${managerId ? `&managerId=${encodeURIComponent(managerId)}` : ''}${team ? `&team=${encodeURIComponent(team)}` : ''}`),
   // Content Library (manager/admin content authoring)
   listContent: (section, managerId) =>
     call(`manage-content?section=${encodeURIComponent(section)}${managerId ? `&managerId=${encodeURIComponent(managerId)}` : ''}`),
-  addManualContent: (section, block, requestedManagerId) =>
+  addManualContent: (section, block, requestedManagerId, customLabel) =>
     call('manage-content', {
       method: 'POST',
-      body: JSON.stringify({ section, action: 'addManual', block, requestedManagerId })
+      body: JSON.stringify({ section, action: 'addManual', block, requestedManagerId, customLabel })
     }),
   addFromLibrary: (section, blockId, requestedManagerId) =>
     call('manage-content', {
@@ -78,6 +78,12 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ track, sections })
     }),
+  // Named teams/sub-groups (e.g. Client Executive, Client Delivery)
+  listTeams: () => call('manage-teams'),
+  addTeam: (label) =>
+    call('manage-teams', { method: 'POST', body: JSON.stringify({ action: 'add', label }) }),
+  removeTeam: (key) =>
+    call('manage-teams', { method: 'POST', body: JSON.stringify({ action: 'remove', key }) }),
   // Manager-only endpoints
   getTeamProgress: (trackKey, scope) =>
     call(`get-team-progress?track=${encodeURIComponent(trackKey)}${scope ? `&scope=${scope}` : ''}`),

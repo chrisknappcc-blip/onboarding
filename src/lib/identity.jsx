@@ -37,7 +37,10 @@ export function IdentityProvider({ children }) {
     defaultTeamView: meta.defaultTeamView || 'mine',
     // Whoever manages this person - used to key their own content library
     managerId: meta.managerId || user?.email || null,
-    email: user?.email || null
+    email: user?.email || null,
+    // Sub-team (e.g. "client-executive") - set via Manage Access. Lets two
+    // people with the same manager still see different content.
+    team: meta.team || null
   };
 
   return <IdentityContext.Provider value={value}>{children}</IdentityContext.Provider>;
