@@ -119,6 +119,12 @@ export default function ContentManager() {
               {teams.map((t) => <option key={t.key} value={`team:${t.key}`}>{t.label}</option>)}
             </optgroup>
           )}
+          {isAdmin && (
+            <optgroup label="Track defaults (applies to everyone on that track)">
+              <option value="bdr">BDR (all)</option>
+              <option value="ae">AE (all)</option>
+            </optgroup>
+          )}
           {isAdmin && managers.filter((m) => m.email !== email).length > 0 && (
             <optgroup label="Managers">
               {managers.filter((m) => m.email !== email).map((m) => (
