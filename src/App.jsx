@@ -6,7 +6,7 @@ import ProfileGate from './components/ProfileGate.jsx';
 import RequirePasswordChange from './components/RequirePasswordChange.jsx';
 import { getTrack } from './config/tracks.js';
 
-import Dashboard from './sections/Dashboard.jsx';
+import Intro from './sections/Intro.jsx';
 import Playbook from './sections/Playbook.jsx';
 import HubSpotWalkthrough from './sections/HubSpotWalkthrough.jsx';
 import GongLibrary from './sections/GongLibrary.jsx';
@@ -72,7 +72,8 @@ function AuthedApp() {
   return (
     <Layout track={track} hasTeamAccess={hasTeamAccess} isAdmin={isAdmin}>
       <Routes>
-        <Route path="/" element={<Dashboard track={track} />} />
+        <Route path="/" element={<Navigate to="/intro" replace />} />
+        <Route path="/intro" element={<Intro />} />
         <Route path="/playbook" element={<Playbook trackKey={trackKey} />} />
         <Route path="/hubspot-walkthrough" element={<HubSpotWalkthrough trackKey={trackKey} />} />
         <Route path="/gong-library" element={<GongLibrary trackKey={trackKey} />} />
