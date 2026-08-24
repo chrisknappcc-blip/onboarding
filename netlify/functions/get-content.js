@@ -5,24 +5,32 @@ const TITLES = {
   'hubspot-walkthrough': 'HubSpot Walkthrough',
   'gong-library': 'Gong Recordings',
   'app-walkthroughs': 'Tools We Use',
-  intranet: 'Intranet'
+  intranet: 'Intranet',
+  tasks: 'Tasks'
 };
 
 export async function handler(event) {
   try {
     const track = event.queryStringParameters?.track || 'bdr';
     const section = event.queryStringParameters?.section;
+    const managerId = event.queryStringParameters?.managerId;
     if (!section) {
       return { statusCode: 400, body: JSON.stringify({ error: 'section is required' }) };
     }
 
-    // Content is authored per-track first, falls back to a shared version
-    // (e.g. the HubSpot walkthrough is identical for bdr and ae for now).
-    const trackSpecific = await readJson(`content/${track}/${section}.json`, null);
-    const shared = trackSpecific || (await readJson(`content/shared/${section}.json`, null));
+    // Resolution order: the viewer's own manager's customized content first
+    // (set via the Content Library page), then a track-wide default, then a
+    // shared fallback used across all tracks.
+    let data = null;
+    if (managerId) {
+      data = await readJson(`content/${managerId}/${section}.json`, null);
+    }
+    if (!data) data = await readJson(`content/${track}/${section}.json`, null);
+    if (!data) data = await readJson(`content/shared/${section}.json`, null);
 
-    const data = shared || { title: TITLES[section] || section, blocks: [] };
-    return { statusCode: 200, body: JSON.stringify(data) };
+    const result = data || { title: TITLES[section] || section, blocks: [] };
+    if (!result.title) result.title = TITLES[section] || section;
+    return { statusCode: 200, body: JSON.stringify(result) };
   } catch (err) {
     return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
   }
