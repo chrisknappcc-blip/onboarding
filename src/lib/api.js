@@ -24,8 +24,26 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ track: trackKey, taskId, done, ...extra })
     }),
-  getContent: (trackKey, section) =>
-    call(`get-content?track=${encodeURIComponent(trackKey)}&section=${encodeURIComponent(section)}`),
+  getContent: (trackKey, section, managerId) =>
+    call(`get-content?track=${encodeURIComponent(trackKey)}&section=${encodeURIComponent(section)}${managerId ? `&managerId=${encodeURIComponent(managerId)}` : ''}`),
+  // Content Library (manager/admin content authoring)
+  listContent: (section, managerId) =>
+    call(`manage-content?section=${encodeURIComponent(section)}${managerId ? `&managerId=${encodeURIComponent(managerId)}` : ''}`),
+  addManualContent: (section, block, requestedManagerId) =>
+    call('manage-content', {
+      method: 'POST',
+      body: JSON.stringify({ section, action: 'addManual', block, requestedManagerId })
+    }),
+  addFromLibrary: (section, blockId, requestedManagerId) =>
+    call('manage-content', {
+      method: 'POST',
+      body: JSON.stringify({ section, action: 'addFromLibrary', blockId, requestedManagerId })
+    }),
+  removeContent: (section, blockId, requestedManagerId) =>
+    call('manage-content', {
+      method: 'POST',
+      body: JSON.stringify({ section, action: 'remove', blockId, requestedManagerId })
+    }),
   // Manager-only endpoints
   getTeamProgress: (trackKey, scope) =>
     call(`get-team-progress?track=${encodeURIComponent(trackKey)}${scope ? `&scope=${scope}` : ''}`),

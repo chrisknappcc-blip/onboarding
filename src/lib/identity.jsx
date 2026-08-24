@@ -34,7 +34,10 @@ export function IdentityProvider({ children }) {
     hasTeamAccess: roles.includes('admin') || roles.includes('manager'),
     track: meta.track || 'bdr',
     // "mine" (Chris) or "all" (John) - only relevant for admins
-    defaultTeamView: meta.defaultTeamView || 'mine'
+    defaultTeamView: meta.defaultTeamView || 'mine',
+    // Whoever manages this person - used to key their own content library
+    managerId: meta.managerId || user?.email || null,
+    email: user?.email || null
   };
 
   return <IdentityContext.Provider value={value}>{children}</IdentityContext.Provider>;
