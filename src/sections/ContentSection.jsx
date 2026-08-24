@@ -6,18 +6,18 @@ import { useIdentity } from '../lib/identity.jsx';
 // Shared shell for sections that are just "fetch some content, render it".
 // Content shape from get-content.js: { title, blocks: [{ type: 'text'|'link'|'video', ... }] }
 export default function ContentSection({ trackKey, section, emptyLabel, searchable }) {
-  const { managerId } = useIdentity();
+  const { managerId, team } = useIdentity();
   const [content, setContent] = useState(null);
   const [error, setError] = useState(null);
   const [query, setQuery] = useState('');
 
   useEffect(() => {
     let cancelled = false;
-    api.getContent(trackKey, section, managerId)
+    api.getContent(trackKey, section, managerId, team)
       .then((data) => !cancelled && setContent(data))
       .catch((e) => !cancelled && setError(e.message));
     return () => { cancelled = true; };
-  }, [trackKey, section, managerId]);
+  }, [trackKey, section, managerId, team]);
 
   const filteredBlocks = useMemo(() => {
     if (!content?.blocks) return [];

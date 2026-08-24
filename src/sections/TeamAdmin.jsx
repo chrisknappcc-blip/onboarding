@@ -15,13 +15,14 @@ function generatePassword() {
   return Array.from(bytes, (b) => chars[b % chars.length]).join('');
 }
 
-function AddMemberForm({ managers, onCreated }) {
+function AddMemberForm({ managers, teams, onCreated }) {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [fullName, setFullName] = useState('');
   const [role, setRole] = useState('');
   const [track, setTrack] = useState('bdr');
   const [managerId, setManagerId] = useState('');
+  const [team, setTeam] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null); // { email, password }
@@ -37,6 +38,7 @@ function AddMemberForm({ managers, onCreated }) {
         roles: role ? [role] : [],
         track,
         managerId: managerId || undefined,
+        team: team || undefined,
         mustChangePassword: true
       };
       await api.createTeamUser(email.trim(), fullName.trim(), password, appMetadata);
@@ -45,6 +47,7 @@ function AddMemberForm({ managers, onCreated }) {
       setFullName('');
       setRole('');
       setManagerId('');
+      setTeam('');
       onCreated();
     } catch (e) {
       setError(e.message);
@@ -117,9 +120,13 @@ function AddMemberForm({ managers, onCreated }) {
           <option value="bdr">BDR</option>
           <option value="ae">AE</option>
         </select>
-        <select value={managerId} onChange={(e) => setManagerId(e.target.value)} className="text-sm border border-border rounded-lg px-2 py-2 bg-white col-span-2">
+        <select value={managerId} onChange={(e) => setManagerId(e.target.value)} className="text-sm border border-border rounded-lg px-2 py-2 bg-white">
           <option value="">Reports to — none —</option>
           {managers.map((m) => <option key={m.id} value={m.email}>{m.fullName || m.email}</option>)}
+        </select>
+        <select value={team} onChange={(e) => setTeam(e.target.value)} className="text-sm border border-border rounded-lg px-2 py-2 bg-white col-span-2">
+          <option value="">Sub-team — none —</option>
+          {teams.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
         </select>
       </div>
       <div className="flex gap-2 mt-3">
@@ -140,6 +147,8 @@ function AddMemberForm({ managers, onCreated }) {
 
 export default function TeamAdmin() {
   const [users, setUsers] = useState(null);
+  const [teams, setTeams] = useState([]);
+  const [newTeamLabel, setNewTeamLabel] = useState('');
   const [error, setError] = useState(null);
   const [savingId, setSavingId] = useState(null);
   const [savedId, setSavedId] = useState(null);
@@ -157,6 +166,7 @@ export default function TeamAdmin() {
                 role: (u.appMetadata.roles || [])[0] || '',
                 track: u.appMetadata.track || 'bdr',
                 managerId: u.appMetadata.managerId || '',
+                team: u.appMetadata.team || '',
                 defaultTeamView: u.appMetadata.defaultTeamView || 'mine'
               };
             }
@@ -167,7 +177,22 @@ export default function TeamAdmin() {
       .catch((e) => setError(e.message));
   }
 
-  useEffect(() => { refresh(); }, []);
+  function refreshTeams() {
+    api.listTeams().then((r) => setTeams(r.teams || [])).catch(() => {});
+  }
+
+  useEffect(() => { refresh(); refreshTeams(); }, []);
+
+  async function addTeam() {
+    if (!newTeamLabel.trim()) return;
+    try {
+      await api.addTeam(newTeamLabel.trim());
+      setNewTeamLabel('');
+      refreshTeams();
+    } catch (e) {
+      setError(e.message);
+    }
+  }
 
   const managers = users
     ? users.filter((u) => {
@@ -189,6 +214,7 @@ export default function TeamAdmin() {
         roles: d.role ? [d.role] : [],
         track: d.track,
         managerId: d.managerId || undefined,
+        team: d.team || undefined,
         defaultTeamView: d.role === 'admin' ? d.defaultTeamView : undefined
       };
       await api.updateTeamUser(userId, appMetadata);
@@ -219,16 +245,33 @@ export default function TeamAdmin() {
 
       {error && <p className="text-sm text-red-600 mt-3">{error}</p>}
 
-      <div className="mt-6">
-        <AddMemberForm managers={managers} onCreated={refresh} />
+      <div className="mt-6 flex items-center gap-2">
+        <input
+          value={newTeamLabel}
+          onChange={(e) => setNewTeamLabel(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && addTeam()}
+          placeholder="Add a sub-team (e.g. 'Client Executive')"
+          className="text-sm border border-border rounded-lg px-3 py-2 w-64"
+        />
+        <button onClick={addTeam} className="px-3 py-2 bg-navy text-white text-xs font-medium rounded-lg hover:bg-navy-dark">
+          Add team
+        </button>
+        {teams.length > 0 && (
+          <span className="text-xs text-ink-300">Existing: {teams.map((t) => t.label).join(', ')}</span>
+        )}
+      </div>
+
+      <div className="mt-3">
+        <AddMemberForm managers={managers} teams={teams} onCreated={refresh} />
       </div>
 
       <div className="bg-card border border-border rounded-xl overflow-hidden">
-        <div className="grid grid-cols-[1.6fr_1fr_1fr_1.2fr_0.8fr_auto] gap-3 px-5 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-ink-300 border-b border-border">
+        <div className="grid grid-cols-[1.4fr_0.9fr_0.7fr_1fr_0.9fr_0.7fr_auto] gap-3 px-5 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-ink-300 border-b border-border">
           <span>Person</span>
           <span>Access</span>
           <span>Track</span>
           <span>Reports to</span>
+          <span>Sub-team</span>
           <span>Default view</span>
           <span></span>
         </div>
@@ -237,7 +280,7 @@ export default function TeamAdmin() {
           return (
             <div
               key={u.id}
-              className="grid grid-cols-[1.6fr_1fr_1fr_1.2fr_0.8fr_auto] gap-3 items-center px-5 py-3 border-b border-border last:border-b-0"
+              className="grid grid-cols-[1.4fr_0.9fr_0.7fr_1fr_0.9fr_0.7fr_auto] gap-3 items-center px-5 py-3 border-b border-border last:border-b-0"
             >
               <div className="min-w-0">
                 <div className="text-sm font-medium text-ink-900 truncate">{u.fullName || u.email}</div>
@@ -274,6 +317,15 @@ export default function TeamAdmin() {
                   .map((m) => (
                     <option key={m.id} value={m.email}>{m.fullName || m.email}</option>
                   ))}
+              </select>
+
+              <select
+                value={d.team}
+                onChange={(e) => updateDraft(u.id, 'team', e.target.value)}
+                className="text-sm border border-border rounded-lg px-2 py-1.5 bg-white"
+              >
+                <option value="">— none —</option>
+                {teams.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
               </select>
 
               {d.role === 'admin' ? (

@@ -6,7 +6,7 @@ import { useIdentity } from '../lib/identity.jsx';
 import ProgressRing from '../components/ProgressRing.jsx';
 
 export default function TaskQueue({ trackKey, track }) {
-  const { managerId } = useIdentity();
+  const { managerId, team } = useIdentity();
   const [tasks, setTasks] = useState(null);
   const [newTask, setNewTask] = useState('');
   const [error, setError] = useState(null);
@@ -17,7 +17,7 @@ export default function TaskQueue({ trackKey, track }) {
       api.getProgress(trackKey),
       // A manager's own task template (Content Library) takes precedence
       // over the hardcoded defaults in tracks.js, if they've set one up.
-      api.getContent(trackKey, 'tasks', managerId).catch(() => ({ blocks: [] }))
+      api.getContent(trackKey, 'tasks', managerId, team).catch(() => ({ blocks: [] }))
     ])
       .then(([data, templateContent]) => {
         if (cancelled) return;
@@ -36,7 +36,7 @@ export default function TaskQueue({ trackKey, track }) {
       })
       .catch((e) => setError(e.message));
     return () => { cancelled = true; };
-  }, [trackKey, managerId]);
+  }, [trackKey, managerId, team]);
 
   async function toggleTask(taskId, done) {
     const task = tasks.find((t) => t.id === taskId);

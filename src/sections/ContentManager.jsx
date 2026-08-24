@@ -20,12 +20,15 @@ export default function ContentManager() {
   const { isAdmin, email } = useIdentity();
   const [section, setSection] = useState('playbook');
   const [managers, setManagers] = useState([]);
-  const [targetManagerId, setTargetManagerId] = useState('');
+  const [teams, setTeams] = useState([]);
+  const [newTeamLabel, setNewTeamLabel] = useState('');
+  const [target, setTarget] = useState(''); // '' = me, 'team:key', an email, or 'shared'
   const [data, setData] = useState(null); // { managerId, mine, library }
   const [error, setError] = useState(null);
   const [editingBlock, setEditingBlock] = useState(null);
 
   const sectionConfig = SECTIONS.find((s) => s.key === section);
+  const effectiveTarget = target || undefined; // undefined = "me", handled server-side
 
   useEffect(() => {
     if (isAdmin) {
@@ -33,24 +36,39 @@ export default function ContentManager() {
         .then((res) => {
           const list = res.users.filter((u) => (u.appMetadata.roles || []).some((r) => ['admin', 'manager'].includes(r)));
           setManagers(list);
-          if (!targetManagerId) setTargetManagerId(email);
         })
         .catch(() => {});
     }
+    api.listTeams().then((r) => setTeams(r.teams || [])).catch(() => {});
   }, [isAdmin]);
 
+  function refreshTeams() {
+    api.listTeams().then((r) => setTeams(r.teams || [])).catch(() => {});
+  }
+
+  async function addTeam() {
+    if (!newTeamLabel.trim()) return;
+    try {
+      await api.addTeam(newTeamLabel.trim());
+      setNewTeamLabel('');
+      refreshTeams();
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
   function refresh() {
-    api.listContent(section, isAdmin ? targetManagerId : undefined)
+    api.listContent(section, effectiveTarget)
       .then(setData)
       .catch((e) => setError(e.message));
   }
 
-  useEffect(() => { refresh(); setEditingBlock(null); }, [section, targetManagerId]);
+  useEffect(() => { refresh(); setEditingBlock(null); }, [section, target]);
 
   async function addFromLibrary(blockId) {
     if (!blockId) return;
     try {
-      await api.addFromLibrary(section, blockId, isAdmin ? targetManagerId : undefined);
+      await api.addFromLibrary(section, blockId, effectiveTarget);
       refresh();
     } catch (e) {
       setError(e.message);
@@ -59,7 +77,7 @@ export default function ContentManager() {
 
   async function remove(blockId) {
     try {
-      await api.removeContent(section, blockId, isAdmin ? targetManagerId : undefined);
+      await api.removeContent(section, blockId, effectiveTarget);
       if (editingBlock?.id === blockId) setEditingBlock(null);
       refresh();
     } catch (e) {
@@ -82,7 +100,7 @@ export default function ContentManager() {
         What each new hire sees is pulled from their manager's own content here.
       </p>
 
-      <div className="flex gap-2.5 mt-5">
+      <div className="flex flex-wrap gap-2.5 mt-5">
         <select
           value={section}
           onChange={(e) => setSection(e.target.value)}
@@ -90,25 +108,44 @@ export default function ContentManager() {
         >
           {SECTIONS.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
         </select>
-        {isAdmin && (
-          <select
-            value={targetManagerId}
-            onChange={(e) => setTargetManagerId(e.target.value)}
-            className="text-sm border border-border rounded-lg px-3 py-2 bg-white"
-          >
-            <option value={email}>Me ({email})</option>
-            {managers.filter((m) => m.email !== email).map((m) => (
-              <option key={m.id} value={m.email}>{m.fullName || m.email}</option>
-            ))}
-            <option value="shared">Organization-wide (everyone)</option>
-          </select>
-        )}
+        <select
+          value={target}
+          onChange={(e) => setTarget(e.target.value)}
+          className="text-sm border border-border rounded-lg px-3 py-2 bg-white"
+        >
+          <option value="">Me ({email})</option>
+          {teams.length > 0 && (
+            <optgroup label="Teams">
+              {teams.map((t) => <option key={t.key} value={`team:${t.key}`}>{t.label}</option>)}
+            </optgroup>
+          )}
+          {isAdmin && managers.filter((m) => m.email !== email).length > 0 && (
+            <optgroup label="Managers">
+              {managers.filter((m) => m.email !== email).map((m) => (
+                <option key={m.id} value={m.email}>{m.fullName || m.email}</option>
+              ))}
+            </optgroup>
+          )}
+          {isAdmin && <option value="shared">Organization-wide (everyone)</option>}
+        </select>
+        <div className="flex items-center gap-1.5">
+          <input
+            value={newTeamLabel}
+            onChange={(e) => setNewTeamLabel(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && addTeam()}
+            placeholder="+ New team name"
+            className="text-sm border border-border rounded-lg px-3 py-2 w-40"
+          />
+          <button onClick={addTeam} className="px-2.5 py-2 bg-navy text-white text-xs font-medium rounded-lg hover:bg-navy-dark">
+            Add
+          </button>
+        </div>
       </div>
 
       {error && <p className="text-sm text-red-600 mt-3">{error}</p>}
 
       {isAdmin && (
-        <PresetsPanel targetManagerId={targetManagerId} managers={managers} email={email} onApplied={refresh} />
+        <PresetsPanel sourceManagerId={target || email} teams={teams} managers={managers} email={email} onApplied={refresh} />
       )}
 
       {!data ? (
@@ -164,7 +201,7 @@ export default function ContentManager() {
               key={editingBlock?.id || 'new'}
               kind={sectionConfig.kind}
               section={section}
-              managerId={isAdmin ? targetManagerId : undefined}
+              managerId={effectiveTarget}
               editingBlock={editingBlock}
               onSaved={() => { setEditingBlock(null); refresh(); }}
               onCancelEdit={() => setEditingBlock(null)}
@@ -176,7 +213,7 @@ export default function ContentManager() {
   );
 }
 
-function PresetsPanel({ targetManagerId, managers, email, onApplied }) {
+function PresetsPanel({ sourceManagerId, teams, managers, email, onApplied }) {
   const [presets, setPresets] = useState([]);
   const [newName, setNewName] = useState('');
   const [applyName, setApplyName] = useState('');
@@ -197,7 +234,7 @@ function PresetsPanel({ targetManagerId, managers, email, onApplied }) {
     setSaving(true);
     setError(null);
     try {
-      await api.savePreset(newName.trim(), targetManagerId);
+      await api.savePreset(newName.trim(), sourceManagerId);
       setNewName('');
       refresh();
     } catch (e) {
@@ -288,6 +325,7 @@ function PresetsPanel({ targetManagerId, managers, email, onApplied }) {
             <select value={applyTarget} onChange={(e) => setApplyTarget(e.target.value)} className="flex-1 text-sm border border-border rounded-lg px-2 py-2 bg-white">
               <option value="">Apply to...</option>
               <option value={email}>Me ({email})</option>
+              {teams.map((t) => <option key={t.key} value={`team:${t.key}`}>{t.label}</option>)}
               {managers.filter((m) => m.email !== email).map((m) => (
                 <option key={m.id} value={m.email}>{m.fullName || m.email}</option>
               ))}
@@ -315,6 +353,7 @@ function ManualAddForm({ kind, section, managerId, editingBlock, onSaved, onCanc
   const [url, setUrl] = useState(editingBlock?.url || '');
   const [description, setDescription] = useState(editingBlock?.description || '');
   const [thumbnail, setThumbnail] = useState(editingBlock?.thumbnail || '');
+  const [customLabel, setCustomLabel] = useState('');
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -358,8 +397,8 @@ function ManualAddForm({ kind, section, managerId, editingBlock, onSaved, onCanc
       if (isEditing) {
         await api.editContent(section, editingBlock.id, block, managerId);
       } else {
-        await api.addManualContent(section, block, managerId);
-        setText(''); setLabel(''); setUrl(''); setDescription(''); setThumbnail('');
+        await api.addManualContent(section, block, managerId, customLabel || undefined);
+        setText(''); setLabel(''); setUrl(''); setDescription(''); setThumbnail(''); setCustomLabel('');
       }
       onSaved();
     } catch (e) {
@@ -456,6 +495,15 @@ function ManualAddForm({ kind, section, managerId, editingBlock, onSaved, onCanc
             </div>
           )}
         </>
+      )}
+
+      {!isEditing && (
+        <input
+          value={customLabel}
+          onChange={(e) => setCustomLabel(e.target.value)}
+          placeholder="Save this as (for the reuse dropdown) — e.g. 'Team Structure - Client Executive'"
+          className="w-full text-sm border border-border rounded-lg px-3 py-2 mt-2"
+        />
       )}
 
       <div className="flex items-center gap-2 mt-3">

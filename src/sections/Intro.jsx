@@ -14,7 +14,7 @@ export const INTRO_CHAPTERS = [
 ];
 
 export default function Intro() {
-  const { track: trackKey, managerId, user } = useIdentity();
+  const { track: trackKey, managerId, team, user } = useIdentity();
   const navigate = useNavigate();
   const [index, setIndex] = useState(0);
   const [content, setContent] = useState({});
@@ -25,14 +25,14 @@ export default function Intro() {
   const chapter = INTRO_CHAPTERS[index];
 
   useEffect(() => {
-    Promise.all(INTRO_CHAPTERS.map((c) => api.getContent(trackKey, c.key, managerId)))
+    Promise.all(INTRO_CHAPTERS.map((c) => api.getContent(trackKey, c.key, managerId, team)))
       .then((results) => {
         const byKey = {};
         INTRO_CHAPTERS.forEach((c, i) => { byKey[c.key] = results[i]; });
         setContent(byKey);
       })
       .catch((e) => setError(e.message));
-  }, [trackKey, managerId]);
+  }, [trackKey, managerId, team]);
 
   async function finish() {
     setFinishing(true);
