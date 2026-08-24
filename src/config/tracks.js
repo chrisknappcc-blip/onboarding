@@ -9,12 +9,12 @@ export const TRACKS = {
     label: 'BDR Onboarding',
     manager: 'chris.knapp',
     sections: [
-      { key: 'playbook', label: 'Playbook', icon: 'BookOpen', searchable: true },
+      { key: 'task-queue', label: 'My Tasks', icon: 'ListChecks' },
       { key: 'hubspot-walkthrough', label: 'HubSpot Walkthrough', icon: 'MousePointerClick', searchable: true },
       { key: 'gong-library', label: 'Gong Recordings', icon: 'PlayCircle' },
       { key: 'app-walkthroughs', label: 'Tools We Use', icon: 'LayoutGrid', searchable: true },
       { key: 'intranet', label: 'Intranet', icon: 'Globe' },
-      { key: 'task-queue', label: 'My Tasks', icon: 'ListChecks' }
+      { key: 'playbook', label: 'Playbook', icon: 'BookOpen', searchable: true }
     ],
     // Seed tasks - editable later via the task queue UI, this is just the
     // default checklist a new BDR starts with.
@@ -32,12 +32,12 @@ export const TRACKS = {
     label: 'AE Onboarding (Cole\'s Team)',
     manager: 'cole',
     sections: [
-      { key: 'playbook', label: 'Playbook', icon: 'BookOpen', searchable: true },
+      { key: 'task-queue', label: 'My Tasks', icon: 'ListChecks' },
       { key: 'hubspot-walkthrough', label: 'HubSpot Walkthrough', icon: 'MousePointerClick', searchable: true },
       { key: 'gong-library', label: 'Gong Recordings', icon: 'PlayCircle' },
       { key: 'app-walkthroughs', label: 'Tools We Use', icon: 'LayoutGrid', searchable: true },
       { key: 'intranet', label: 'Intranet', icon: 'Globe' },
-      { key: 'task-queue', label: 'My Tasks', icon: 'ListChecks' }
+      { key: 'playbook', label: 'Playbook', icon: 'BookOpen', searchable: true }
     ],
     defaultTasks: [
       { id: 'intro-complete', title: 'Complete the Intro', section: 'intro' },
