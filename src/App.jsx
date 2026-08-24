@@ -1,10 +1,10 @@
 import { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useIdentity } from './lib/identity.jsx';
+import { useTrackConfig } from './lib/useTrackConfig.js';
 import Layout from './components/Layout.jsx';
 import ProfileGate from './components/ProfileGate.jsx';
 import RequirePasswordChange from './components/RequirePasswordChange.jsx';
-import { getTrack } from './config/tracks.js';
 
 import Intro from './sections/Intro.jsx';
 import Playbook from './sections/Playbook.jsx';
@@ -16,6 +16,7 @@ import TaskQueue from './sections/TaskQueue.jsx';
 import TeamProgress from './sections/TeamProgress.jsx';
 import TeamAdmin from './sections/TeamAdmin.jsx';
 import ContentManager from './sections/ContentManager.jsx';
+import StructureEditor from './sections/StructureEditor.jsx';
 
 export default function App() {
   const { user, initialized, login } = useIdentity();
@@ -67,7 +68,7 @@ export default function App() {
 
 function AuthedApp() {
   const { track: trackKey, hasTeamAccess, isAdmin } = useIdentity();
-  const track = getTrack(trackKey);
+  const track = useTrackConfig(trackKey);
 
   return (
     <Layout track={track} hasTeamAccess={hasTeamAccess} isAdmin={isAdmin}>
@@ -88,6 +89,9 @@ function AuthedApp() {
         )}
         {isAdmin && (
           <Route path="/team-admin" element={<TeamAdmin />} />
+        )}
+        {isAdmin && (
+          <Route path="/app-structure" element={<StructureEditor />} />
         )}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
