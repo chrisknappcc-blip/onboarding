@@ -54,6 +54,11 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ dataBase64, contentType })
     }),
+  uploadFile: (dataBase64, contentType, fileName) =>
+    call('upload-file', {
+      method: 'POST',
+      body: JSON.stringify({ dataBase64, contentType, fileName })
+    }),
   // Presets - save/apply a full content bundle across all sections at once
   listPresets: () => call('manage-presets'),
   savePreset: (name, sourceManagerId) =>
