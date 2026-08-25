@@ -80,21 +80,36 @@ export async function handler(event, context) {
       }
 
       // Safe fixup for an account that got stuck unconfirmed (e.g. created
-      // before this fix existed) - only ever touches confirmed_at, never
-      // roles or other metadata, so it can't accidentally grant access.
+      // before this fix existed) - only ever touches confirmation fields,
+      // never roles or other metadata, so it can't accidentally grant
+      // access. Sends both field names since it's unclear which one this
+      // GoTrue instance actually honors on a PUT (as opposed to at
+      // creation, where neither reliably works).
       if (body.action === 'confirm') {
         const { userId } = body;
         if (!userId) return { statusCode: 400, body: JSON.stringify({ error: 'userId is required' }) };
         const res = await fetch(`${url}/admin/users/${userId}`, {
           method: 'PUT',
           headers: { ...authHeader, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ confirmed_at: new Date().toISOString() })
+          body: JSON.stringify({ confirmed_at: new Date().toISOString(), email_confirm: true })
         });
         if (!res.ok) {
           const text = await res.text().catch(() => '');
           throw new Error(`Confirm failed: ${res.status} ${text}`);
         }
-        return { statusCode: 200, body: JSON.stringify({ ok: true }) };
+        const updated = await res.json();
+        // Read it back fresh so the caller can see whether it actually took,
+        // rather than trusting a 200 that might not reflect a real change.
+        const verifyRes = await fetch(`${url}/admin/users/${userId}`, { headers: authHeader });
+        const verified = verifyRes.ok ? await verifyRes.json() : null;
+        return {
+          statusCode: 200,
+          body: JSON.stringify({
+            ok: true,
+            confirmedAtFromResponse: updated.confirmed_at || null,
+            confirmedAtVerified: verified?.confirmed_at || null
+          })
+        };
       }
 
       // Existing path: update roles/track/managerId on an existing user.
