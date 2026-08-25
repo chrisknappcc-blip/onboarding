@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search, X, Link as LinkIcon } from 'lucide-react';
+import { Search, X, Link as LinkIcon, FileText, FileSpreadsheet, Presentation } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { useIdentity } from '../lib/identity.jsx';
 
@@ -115,12 +115,42 @@ function faviconFor(url) {
   }
 }
 
-export function ContentBlock({ block, query }) {
+export function iconForFile(fileName) {
+  const ext = (fileName || '').split('.').pop()?.toLowerCase();
+  if (['xls', 'xlsx', 'csv'].includes(ext)) return FileSpreadsheet;
+  if (['ppt', 'pptx'].includes(ext)) return Presentation;
+  return FileText;
+}
+
+function formatFileSize(fileName) {
+  const ext = (fileName || '').split('.').pop()?.toUpperCase();
+  return ext || 'FILE';
+}
+
+function ContentBlock({ block, query }) {
   if (block.type === 'text') {
     return (
       <p className="text-sm text-ink-700 leading-relaxed whitespace-pre-wrap">
         {renderFormattedText(block.text, query)}
       </p>
+    );
+  }
+  if (block.type === 'file') {
+    const Icon = iconForFile(block.fileName);
+    return (
+      <a href={block.url} target="_blank" rel="noreferrer"
+         className="flex gap-3 p-3.5 bg-card border border-border rounded-xl hover:border-navy/30 transition-colors">
+        <div className="w-11 h-11 rounded-lg bg-navy/10 flex items-center justify-center shrink-0">
+          <Icon size={20} className="text-navy" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-navy truncate">{highlight(block.label || block.fileName, query)}</p>
+          {block.description && (
+            <p className="text-xs text-ink-500 mt-0.5 line-clamp-2">{highlight(block.description, query)}</p>
+          )}
+          <p className="text-[11px] text-ink-300 mt-0.5">{formatFileSize(block.fileName)} · {block.fileName}</p>
+        </div>
+      </a>
     );
   }
   if (block.type === 'link') {

@@ -515,7 +515,7 @@ function TeamsManagerPanel({ teams, onChanged }) {
 
 function ManualAddForm({ kind, section, managerId, editingBlock, onSaved, onCancelEdit }) {
   const isEditing = Boolean(editingBlock);
-  const [type, setType] = useState(editingBlock?.type === 'link' ? 'link' : 'text');
+  const [type, setType] = useState(editingBlock?.type === 'link' ? 'link' : editingBlock?.type === 'file' ? 'file' : 'text');
   const [text, setText] = useState(editingBlock?.text || '');
   const [label, setLabel] = useState(editingBlock?.label || '');
   const [url, setUrl] = useState(editingBlock?.url || '');
@@ -523,8 +523,39 @@ function ManualAddForm({ kind, section, managerId, editingBlock, onSaved, onCanc
   const [thumbnail, setThumbnail] = useState(editingBlock?.thumbnail || '');
   const [customLabel, setCustomLabel] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [fileInfo, setFileInfo] = useState(
+    editingBlock?.type === 'file' ? { url: editingBlock.url, fileName: editingBlock.fileName, contentType: editingBlock.contentType } : null
+  );
+  const [fileUploading, setFileUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+
+  async function handleDocSelect(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 4 * 1024 * 1024) {
+      setError('File is too large - please use one under 4MB');
+      return;
+    }
+    setFileUploading(true);
+    setError(null);
+    try {
+      const dataBase64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const uploaded = await api.uploadFile(dataBase64, file.type || 'application/octet-stream', file.name);
+      setFileInfo(uploaded);
+      if (!label) setLabel(file.name);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setFileUploading(false);
+      e.target.value = '';
+    }
+  }
 
   async function handleFileSelect(e) {
     const file = e.target.files?.[0];
@@ -560,7 +591,9 @@ function ManualAddForm({ kind, section, managerId, editingBlock, onSaved, onCanc
         ? { type: 'task', text }
         : type === 'link'
           ? { type: 'link', label, url, description: description || undefined, thumbnail: thumbnail || undefined }
-          : { type: 'text', text };
+          : type === 'file'
+            ? { type: 'file', label: label || fileInfo?.fileName, url: fileInfo?.url, fileName: fileInfo?.fileName, contentType: fileInfo?.contentType, description: description || undefined }
+            : { type: 'text', text };
 
       if (isEditing) {
         await api.editContent(section, editingBlock.id, block, managerId);
@@ -576,7 +609,11 @@ function ManualAddForm({ kind, section, managerId, editingBlock, onSaved, onCanc
     }
   }
 
-  const canSubmit = kind === 'tasks' ? text.trim() : (type === 'link' ? url.trim() : text.trim());
+  const canSubmit = kind === 'tasks'
+    ? text.trim()
+    : type === 'link' ? url.trim()
+    : type === 'file' ? Boolean(fileInfo?.url)
+    : text.trim();
 
   return (
     <div className="p-4 bg-card border border-border rounded-xl">
@@ -604,6 +641,12 @@ function ManualAddForm({ kind, section, managerId, editingBlock, onSaved, onCanc
             >
               Link
             </button>
+            <button
+              onClick={() => setType('file')}
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg ${type === 'file' ? 'bg-navy text-white' : 'bg-surface text-ink-500'}`}
+            >
+              File
+            </button>
           </div>
           {type === 'text' ? (
             <textarea
@@ -613,6 +656,43 @@ function ManualAddForm({ kind, section, managerId, editingBlock, onSaved, onCanc
               rows={3}
               className="w-full text-sm border border-border rounded-lg px-3 py-2"
             />
+          ) : type === 'file' ? (
+            <div className="space-y-2">
+              <div className="border border-border rounded-lg p-3">
+                {fileInfo ? (
+                  <div className="flex items-center gap-2">
+                    <FileText size={16} className="text-navy shrink-0" />
+                    <span className="flex-1 text-sm text-ink-900 truncate">{fileInfo.fileName}</span>
+                    <button onClick={() => setFileInfo(null)} className="text-xs text-ink-300 hover:text-red-600">Remove</button>
+                  </div>
+                ) : (
+                  <label className="flex items-center justify-center gap-1.5 py-3 bg-surface text-ink-700 text-sm font-medium rounded-lg cursor-pointer hover:bg-border">
+                    <Upload size={15} />
+                    {fileUploading ? 'Uploading...' : 'Choose a file to upload (Word, PDF, Excel, PowerPoint - under 4MB)'}
+                    <input
+                      type="file"
+                      accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt"
+                      className="hidden"
+                      onChange={handleDocSelect}
+                      disabled={fileUploading}
+                    />
+                  </label>
+                )}
+              </div>
+              <input
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
+                placeholder="Label shown to the person (defaults to the file name)"
+                className="w-full text-sm border border-border rounded-lg px-3 py-2"
+              />
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Short description or note about this file (optional)"
+                rows={2}
+                className="w-full text-sm border border-border rounded-lg px-3 py-2"
+              />
+            </div>
           ) : (
             <div className="space-y-2">
               <input
