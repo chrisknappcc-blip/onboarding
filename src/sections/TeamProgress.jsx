@@ -89,6 +89,14 @@ function IndividualView({ trackKey, person, onBack, onChanged }) {
   const [error, setError] = useState(null);
   const done = tasks.filter((t) => t.done).length;
 
+  // Keep local state in sync with the parent's freshly-fetched data after
+  // any change - without this, a stale local copy can drift from what's
+  // actually saved (e.g. showing a task under an id the server never
+  // created, if a later action referenced it before this sync existed).
+  useEffect(() => {
+    setTasks(person.tasks);
+  }, [person.tasks]);
+
   async function toggle(taskId, doneState) {
     const task = tasks.find((t) => t.id === taskId);
     setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, done: doneState } : t)));
@@ -104,7 +112,10 @@ function IndividualView({ trackKey, person, onBack, onChanged }) {
     const next = !task.starred;
     setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, starred: next } : t)));
     try {
-      await api.setTaskStarred(trackKey, person.userId, task.id, next, task.done);
+      // Always send title/section too, defensively - if this ever fires for
+      // a task id the server doesn't recognize yet, it can still create a
+      // correctly-named entry instead of falling back to the raw id.
+      await api.setTaskStarred(trackKey, person.userId, task.id, next, task.done, { title: task.title, section: task.section });
       onChanged();
     } catch (e) {
       setError(e.message);
@@ -114,10 +125,11 @@ function IndividualView({ trackKey, person, onBack, onChanged }) {
   async function addTask() {
     if (!newTask.trim()) return;
     const title = newTask.trim();
+    const id = `mgr-${Date.now()}`;
     setNewTask('');
     try {
-      await api.addTaskForUser(trackKey, person.userId, title);
-      setTasks((prev) => [...prev, { id: `pending-${Date.now()}`, title, done: false }]);
+      await api.addTaskForUser(trackKey, person.userId, title, id);
+      setTasks((prev) => [...prev, { id, title, done: false }]);
       onChanged();
     } catch (e) {
       setError(e.message);
