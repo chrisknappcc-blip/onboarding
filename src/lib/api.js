@@ -34,6 +34,11 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ section, action: 'addManual', block, requestedManagerId, customLabel })
     }),
+  addBulkContent: (section, blocks, requestedManagerId, customLabel) =>
+    call('manage-content', {
+      method: 'POST',
+      body: JSON.stringify({ section, action: 'addBulk', blocks, requestedManagerId, customLabel })
+    }),
   addFromLibrary: (section, blockId, requestedManagerId) =>
     call('manage-content', {
       method: 'POST',
