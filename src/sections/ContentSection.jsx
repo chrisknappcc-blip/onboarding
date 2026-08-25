@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search, X, Link as LinkIcon, FileText, FileSpreadsheet, Presentation } from 'lucide-react';
+import { Search, X, Link as LinkIcon, FileText, FileSpreadsheet, Presentation, ChevronDown, Download } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { useIdentity } from '../lib/identity.jsx';
 
@@ -127,6 +127,71 @@ function formatFileSize(fileName) {
   return ext || 'FILE';
 }
 
+export function officeExt(fileName) {
+  return ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes((fileName || '').split('.').pop()?.toLowerCase());
+}
+function isPdf(fileName) {
+  return (fileName || '').split('.').pop()?.toLowerCase() === 'pdf';
+}
+function isPlainText(fileName) {
+  return ['txt', 'csv'].includes((fileName || '').split('.').pop()?.toLowerCase());
+}
+
+function FileBlock({ block, query }) {
+  const [expanded, setExpanded] = useState(false);
+  const [textContent, setTextContent] = useState(null);
+  const Icon = iconForFile(block.fileName);
+  const absoluteUrl = `${window.location.origin}${block.url}`;
+  const downloadUrl = `${block.url}&download=1`;
+
+  useEffect(() => {
+    if (expanded && isPlainText(block.fileName) && textContent === null) {
+      fetch(block.url).then((r) => r.text()).then(setTextContent).catch(() => setTextContent('Could not load preview.'));
+    }
+  }, [expanded]);
+
+  return (
+    <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <button onClick={() => setExpanded((v) => !v)} className="w-full flex gap-3 p-3.5 text-left hover:bg-surface/60 transition-colors">
+        <div className="w-11 h-11 rounded-lg bg-navy/10 flex items-center justify-center shrink-0">
+          <Icon size={20} className="text-navy" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-navy truncate">{highlight(block.label || block.fileName, query)}</p>
+          {block.description && (
+            <p className="text-xs text-ink-500 mt-0.5 line-clamp-2">{highlight(block.description, query)}</p>
+          )}
+          <p className="text-[11px] text-ink-300 mt-0.5">{formatFileSize(block.fileName)} · {block.fileName}</p>
+        </div>
+        <ChevronDown size={16} className={`text-ink-300 shrink-0 mt-1 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+      </button>
+
+      {expanded && (
+        <div className="border-t border-border">
+          {isPdf(block.fileName) ? (
+            <iframe src={block.url} title={block.fileName} className="w-full h-[70vh]" />
+          ) : officeExt(block.fileName) ? (
+            <iframe
+              src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(absoluteUrl)}`}
+              title={block.fileName}
+              className="w-full h-[70vh]"
+            />
+          ) : isPlainText(block.fileName) ? (
+            <pre className="p-4 text-xs text-ink-700 whitespace-pre-wrap max-h-[60vh] overflow-y-auto">{textContent || 'Loading...'}</pre>
+          ) : (
+            <p className="p-4 text-sm text-ink-300">Preview isn't available for this file type — use download instead.</p>
+          )}
+          <div className="p-3 border-t border-border bg-surface/50">
+            <a href={downloadUrl} className="inline-flex items-center gap-1.5 text-sm font-medium text-navy hover:text-navy-dark">
+              <Download size={14} /> Download {block.fileName}
+            </a>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ContentBlock({ block, query }) {
   if (block.type === 'text') {
     return (
@@ -136,22 +201,7 @@ export function ContentBlock({ block, query }) {
     );
   }
   if (block.type === 'file') {
-    const Icon = iconForFile(block.fileName);
-    return (
-      <a href={block.url} target="_blank" rel="noreferrer"
-         className="flex gap-3 p-3.5 bg-card border border-border rounded-xl hover:border-navy/30 transition-colors">
-        <div className="w-11 h-11 rounded-lg bg-navy/10 flex items-center justify-center shrink-0">
-          <Icon size={20} className="text-navy" />
-        </div>
-        <div className="min-w-0">
-          <p className="text-sm font-medium text-navy truncate">{highlight(block.label || block.fileName, query)}</p>
-          {block.description && (
-            <p className="text-xs text-ink-500 mt-0.5 line-clamp-2">{highlight(block.description, query)}</p>
-          )}
-          <p className="text-[11px] text-ink-300 mt-0.5">{formatFileSize(block.fileName)} · {block.fileName}</p>
-        </div>
-      </a>
-    );
+    return <FileBlock block={block} query={query} />;
   }
   if (block.type === 'link') {
     const thumb = block.thumbnail || faviconFor(block.url);
