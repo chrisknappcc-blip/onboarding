@@ -13,7 +13,7 @@ export const TRACKS = {
       { key: 'hubspot-walkthrough', label: 'HubSpot Walkthrough', icon: 'MousePointerClick', searchable: true },
       { key: 'gong-library', label: 'Gong Recordings', icon: 'PlayCircle' },
       { key: 'app-walkthroughs', label: 'Tools We Use', icon: 'LayoutGrid', searchable: true },
-      { key: 'intranet', label: 'Intranet', icon: 'Globe' },
+      { key: 'intranet', label: 'Valuable Links', icon: 'Globe' },
       { key: 'playbook', label: 'Playbook', icon: 'BookOpen', searchable: true }
     ],
     // Seed tasks - editable later via the task queue UI, this is just the
@@ -36,7 +36,7 @@ export const TRACKS = {
       { key: 'hubspot-walkthrough', label: 'HubSpot Walkthrough', icon: 'MousePointerClick', searchable: true },
       { key: 'gong-library', label: 'Gong Recordings', icon: 'PlayCircle' },
       { key: 'app-walkthroughs', label: 'Tools We Use', icon: 'LayoutGrid', searchable: true },
-      { key: 'intranet', label: 'Intranet', icon: 'Globe' },
+      { key: 'intranet', label: 'Valuable Links', icon: 'Globe' },
       { key: 'playbook', label: 'Playbook', icon: 'BookOpen', searchable: true }
     ],
     defaultTasks: [
