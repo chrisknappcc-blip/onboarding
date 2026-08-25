@@ -51,13 +51,7 @@ export async function handler(event, context) {
         const res = await fetch(`${url}/admin/users`, {
           method: 'POST',
           headers: { ...authHeader, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email,
-            password,
-            email_confirm: true, // skip the confirmation email step too
-            user_metadata: fullName ? { full_name: fullName } : undefined,
-            app_metadata: appMetadata || {}
-          })
+          body: JSON.stringify({ email, password })
         });
         if (!res.ok) {
           const text = await res.text().catch(() => '');
@@ -65,19 +59,42 @@ export async function handler(event, context) {
         }
         const created = await res.json();
 
-        // email_confirm: true at creation isn't reliably honored - force
-        // confirmation explicitly so login doesn't hit "Email not confirmed".
-        const confirmRes = await fetch(`${url}/admin/users/${created.id}`, {
+        // Fields sent at creation time (confirm status, app_metadata)
+        // aren't reliably applied on Netlify's implementation - only a
+        // follow-up PUT actually sticks, so everything goes there instead.
+        const patchRes = await fetch(`${url}/admin/users/${created.id}`, {
+          method: 'PUT',
+          headers: { ...authHeader, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            confirmed_at: new Date().toISOString(),
+            app_metadata: appMetadata || {},
+            ...(fullName ? { user_metadata: { full_name: fullName } } : {})
+          })
+        });
+        if (!patchRes.ok) {
+          const text = await patchRes.text().catch(() => '');
+          throw new Error(`Account created but confirming/setting role failed: ${patchRes.status} ${text}`);
+        }
+
+        return { statusCode: 200, body: JSON.stringify({ id: created.id }) };
+      }
+
+      // Safe fixup for an account that got stuck unconfirmed (e.g. created
+      // before this fix existed) - only ever touches confirmed_at, never
+      // roles or other metadata, so it can't accidentally grant access.
+      if (body.action === 'confirm') {
+        const { userId } = body;
+        if (!userId) return { statusCode: 400, body: JSON.stringify({ error: 'userId is required' }) };
+        const res = await fetch(`${url}/admin/users/${userId}`, {
           method: 'PUT',
           headers: { ...authHeader, 'Content-Type': 'application/json' },
           body: JSON.stringify({ confirmed_at: new Date().toISOString() })
         });
-        if (!confirmRes.ok) {
-          const text = await confirmRes.text().catch(() => '');
-          throw new Error(`Account created but confirming email failed: ${confirmRes.status} ${text}`);
+        if (!res.ok) {
+          const text = await res.text().catch(() => '');
+          throw new Error(`Confirm failed: ${res.status} ${text}`);
         }
-
-        return { statusCode: 200, body: JSON.stringify({ id: created.id }) };
+        return { statusCode: 200, body: JSON.stringify({ ok: true }) };
       }
 
       // Existing path: update roles/track/managerId on an existing user.
