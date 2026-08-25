@@ -3,7 +3,7 @@ import { readJson } from './utils/azureBlob.js';
 const TITLES = {
   playbook: 'Playbook',
   'hubspot-walkthrough': 'HubSpot Walkthrough',
-  'gong-library': 'Gong Recordings',
+  'gong-library': 'Insightful Gong Recordings',
   'app-walkthroughs': 'Tools We Use',
   intranet: 'Valuable Links',
   tasks: 'Tasks'
