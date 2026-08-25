@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import mammoth from 'mammoth';
 import { Search, X, Link as LinkIcon, FileText, FileSpreadsheet, Presentation, ChevronDown, Download } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { useIdentity } from '../lib/identity.jsx';
@@ -10,6 +11,7 @@ export default function ContentSection({ trackKey, section, emptyLabel, searchab
   const [content, setContent] = useState(null);
   const [error, setError] = useState(null);
   const [query, setQuery] = useState('');
+  const [fileTexts, setFileTexts] = useState({});
 
   useEffect(() => {
     let cancelled = false;
@@ -19,15 +21,38 @@ export default function ContentSection({ trackKey, section, emptyLabel, searchab
     return () => { cancelled = true; };
   }, [trackKey, section, managerId, team]);
 
+  // Search can't see inside an embedded Office viewer iframe (that content
+  // lives on Microsoft's servers, not ours) - so for uploaded .docx files,
+  // pull the actual text out client-side once, and search that instead.
+  useEffect(() => {
+    if (!searchable || !content?.blocks) return;
+    content.blocks.forEach((b, i) => {
+      const key = b.id || i;
+      if (b.type === 'file' && b.fileName?.toLowerCase().endsWith('.docx') && !(key in fileTexts)) {
+        fetch(b.url)
+          .then((r) => r.arrayBuffer())
+          .then((buf) => mammoth.extractRawText({ arrayBuffer: buf }))
+          .then((res) => setFileTexts((prev) => ({ ...prev, [key]: res.value })))
+          .catch(() => setFileTexts((prev) => ({ ...prev, [key]: '' })));
+      }
+    });
+  }, [content, searchable]);
+
   const filteredBlocks = useMemo(() => {
     if (!content?.blocks) return [];
     const q = query.trim().toLowerCase();
-    if (!q) return content.blocks;
-    return content.blocks.filter((b) => {
-      const haystack = [b.text, b.label, b.url].filter(Boolean).join(' ').toLowerCase();
-      return haystack.includes(q);
-    });
-  }, [content, query]);
+    if (!q) return content.blocks.map((b) => ({ block: b, matchedInDoc: false }));
+    return content.blocks
+      .map((b, i) => {
+        const key = b.id || i;
+        const surfaceHaystack = [b.text, b.label, b.url, b.description, b.fileName].filter(Boolean).join(' ').toLowerCase();
+        const docText = (fileTexts[key] || '').toLowerCase();
+        const matchesSurface = surfaceHaystack.includes(q);
+        const matchesDoc = docText.includes(q);
+        return { block: b, matchedInDoc: !matchesSurface && matchesDoc, matches: matchesSurface || matchesDoc };
+      })
+      .filter((entry) => entry.matches);
+  }, [content, query, fileTexts]);
 
   if (error) return <p className="text-sm text-red-600">Couldn't load this section: {error}</p>;
   if (!content) return <p className="text-sm text-ink-300">Loading...</p>;
@@ -69,7 +94,9 @@ export default function ContentSection({ trackKey, section, emptyLabel, searchab
           {filteredBlocks.length === 0 ? (
             <p className="text-sm text-ink-300">No matches for "{query}".</p>
           ) : (
-            filteredBlocks.map((block, i) => <ContentBlock key={i} block={block} query={query} />)
+            filteredBlocks.map((entry, i) => (
+              <ContentBlock key={i} block={entry.block} query={query} matchedInDoc={entry.matchedInDoc} />
+            ))
           )}
         </div>
       )}
@@ -122,11 +149,6 @@ export function iconForFile(fileName) {
   return FileText;
 }
 
-function formatFileSize(fileName) {
-  const ext = (fileName || '').split('.').pop()?.toUpperCase();
-  return ext || 'FILE';
-}
-
 export function officeExt(fileName) {
   return ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes((fileName || '').split('.').pop()?.toLowerCase());
 }
@@ -137,7 +159,7 @@ function isPlainText(fileName) {
   return ['txt', 'csv'].includes((fileName || '').split('.').pop()?.toLowerCase());
 }
 
-function FileBlock({ block, query }) {
+function FileBlock({ block, query, matchedInDoc }) {
   const [expanded, setExpanded] = useState(true);
   const [textContent, setTextContent] = useState(null);
   const Icon = iconForFile(block.fileName);
@@ -161,7 +183,9 @@ function FileBlock({ block, query }) {
           {block.description && (
             <p className="text-xs text-ink-500 mt-0.5 line-clamp-2">{highlight(block.description, query)}</p>
           )}
-          <p className="text-[11px] text-ink-300 mt-0.5">{formatFileSize(block.fileName)} · {block.fileName}</p>
+          {matchedInDoc && (
+            <p className="text-[11px] text-lime-dark font-medium mt-0.5">Matched inside this document</p>
+          )}
         </div>
         <ChevronDown size={16} className={`text-ink-300 shrink-0 mt-1 transition-transform ${expanded ? 'rotate-180' : ''}`} />
       </button>
@@ -192,7 +216,7 @@ function FileBlock({ block, query }) {
   );
 }
 
-export function ContentBlock({ block, query }) {
+export function ContentBlock({ block, query, matchedInDoc }) {
   if (block.type === 'text') {
     return (
       <p className="text-sm text-ink-700 leading-relaxed whitespace-pre-wrap">
@@ -201,7 +225,7 @@ export function ContentBlock({ block, query }) {
     );
   }
   if (block.type === 'file') {
-    return <FileBlock block={block} query={query} />;
+    return <FileBlock block={block} query={query} matchedInDoc={matchedInDoc} />;
   }
   if (block.type === 'link') {
     const thumb = block.thumbnail || faviconFor(block.url);
