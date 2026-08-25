@@ -35,7 +35,7 @@ export default function ContentSection({ trackKey, section, emptyLabel, searchab
   const hasContent = content.blocks && content.blocks.length > 0;
 
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-4xl">
       <h1 className="font-display text-xl font-semibold text-ink-900">{content.title}</h1>
 
       {searchable && hasContent && (
@@ -138,7 +138,7 @@ function isPlainText(fileName) {
 }
 
 function FileBlock({ block, query }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
   const [textContent, setTextContent] = useState(null);
   const Icon = iconForFile(block.fileName);
   const absoluteUrl = `${window.location.origin}${block.url}`;
@@ -169,15 +169,15 @@ function FileBlock({ block, query }) {
       {expanded && (
         <div className="border-t border-border">
           {isPdf(block.fileName) ? (
-            <iframe src={block.url} title={block.fileName} className="w-full h-[70vh]" />
+            <iframe src={block.url} title={block.fileName} className="w-full h-[85vh]" />
           ) : officeExt(block.fileName) ? (
             <iframe
               src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(absoluteUrl)}`}
               title={block.fileName}
-              className="w-full h-[70vh]"
+              className="w-full h-[85vh]"
             />
           ) : isPlainText(block.fileName) ? (
-            <pre className="p-4 text-xs text-ink-700 whitespace-pre-wrap max-h-[60vh] overflow-y-auto">{textContent || 'Loading...'}</pre>
+            <pre className="p-4 text-xs text-ink-700 whitespace-pre-wrap max-h-[75vh] overflow-y-auto">{textContent || 'Loading...'}</pre>
           ) : (
             <p className="p-4 text-sm text-ink-300">Preview isn't available for this file type — use download instead.</p>
           )}
