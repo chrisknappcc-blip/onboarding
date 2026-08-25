@@ -114,10 +114,10 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ track: trackKey, taskId, done, targetUserId, ...extra })
     }),
-  setTaskStarred: (trackKey, targetUserId, taskId, starred, currentDone) =>
+  setTaskStarred: (trackKey, targetUserId, taskId, starred, currentDone, extra = {}) =>
     call('update-progress', {
       method: 'POST',
-      body: JSON.stringify({ track: trackKey, taskId, done: currentDone, starred, targetUserId })
+      body: JSON.stringify({ track: trackKey, taskId, done: currentDone, starred, targetUserId, ...extra })
     }),
   // Admin-only: manage roles, track, and manager assignment for everyone.
   listTeamUsers: () => call('manage-team'),
@@ -132,12 +132,12 @@ export const api = {
       body: JSON.stringify({ action: 'create', email, fullName, password, appMetadata })
     }),
   clearMustChangePassword: () => call('clear-must-change-password', { method: 'POST' }),
-  addTaskForUser: (trackKey, targetUserId, title) =>
+  addTaskForUser: (trackKey, targetUserId, title, taskId) =>
     call('update-progress', {
       method: 'POST',
       body: JSON.stringify({
         track: trackKey,
-        taskId: `mgr-${Date.now()}`,
+        taskId: taskId || `mgr-${Date.now()}`,
         done: false,
         title,
         section: 'task-queue',
