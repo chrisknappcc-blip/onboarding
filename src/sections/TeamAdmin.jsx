@@ -269,7 +269,7 @@ export default function TeamAdmin() {
       </div>
 
       <div className="bg-card border border-border rounded-xl overflow-hidden">
-        <div className="grid grid-cols-[1.4fr_0.9fr_0.7fr_1fr_0.9fr_0.7fr_auto] gap-3 px-5 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-ink-300 border-b border-border">
+        <div className="grid grid-cols-[1.4fr_0.9fr_0.7fr_1fr_0.9fr_0.7fr_108px] gap-3 px-5 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-ink-300 border-b border-border">
           <span>Person</span>
           <span>Access</span>
           <span>Track</span>
@@ -283,7 +283,7 @@ export default function TeamAdmin() {
           return (
             <div
               key={u.id}
-              className="grid grid-cols-[1.4fr_0.9fr_0.7fr_1fr_0.9fr_0.7fr_auto] gap-3 items-center px-5 py-3 border-b border-border last:border-b-0"
+              className="grid grid-cols-[1.4fr_0.9fr_0.7fr_1fr_0.9fr_0.7fr_108px] gap-3 items-center px-5 py-3 border-b border-border last:border-b-0"
             >
               <div className="min-w-0">
                 <div className="text-sm font-medium text-ink-900 truncate">{u.fullName || u.email}</div>
@@ -350,7 +350,7 @@ export default function TeamAdmin() {
               <button
                 onClick={() => save(u.id)}
                 disabled={savingId === u.id}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-navy text-white text-xs font-medium rounded-lg hover:bg-navy-dark transition-colors disabled:opacity-50"
+                className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-navy text-white text-xs font-medium rounded-lg hover:bg-navy-dark transition-colors disabled:opacity-50 whitespace-nowrap"
               >
                 <Save size={13} />
                 {savedId === u.id ? 'Saved' : savingId === u.id ? 'Saving...' : 'Save'}
