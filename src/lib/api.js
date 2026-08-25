@@ -54,6 +54,11 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ section, action: 'edit', blockId, block, requestedManagerId })
     }),
+  reorderContent: (section, orderedIds, requestedManagerId) =>
+    call('manage-content', {
+      method: 'POST',
+      body: JSON.stringify({ section, action: 'reorder', orderedIds, requestedManagerId })
+    }),
   uploadImage: (dataBase64, contentType) =>
     call('upload-image', {
       method: 'POST',
