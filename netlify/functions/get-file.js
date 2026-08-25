@@ -8,6 +8,7 @@ export async function handler(event) {
   try {
     const key = event.queryStringParameters?.key;
     const name = (event.queryStringParameters?.name || 'file').replace(/"/g, '');
+    const forceDownload = event.queryStringParameters?.download === '1';
     if (!key || !key.startsWith('content/files/')) {
       return { statusCode: 400, body: 'Invalid key' };
     }
@@ -19,7 +20,7 @@ export async function handler(event) {
       statusCode: 200,
       headers: {
         'Content-Type': result.contentType,
-        'Content-Disposition': `inline; filename="${name}"`,
+        'Content-Disposition': `${forceDownload ? 'attachment' : 'inline'}; filename="${name}"`,
         'Cache-Control': 'public, max-age=31536000, immutable'
       },
       body: result.base64,
