@@ -3,7 +3,7 @@ import { Save, ShieldCheck, UserPlus, Copy, Check } from 'lucide-react';
 import { api } from '../lib/api.js';
 
 const ROLE_OPTIONS = [
-  { value: '', label: 'No access' },
+  { value: '', label: 'User (their own onboarding only)' },
   { value: 'manager', label: 'Manager (own team only)' },
   { value: 'admin', label: 'Admin (everyone)' }
 ];
