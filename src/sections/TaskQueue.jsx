@@ -23,7 +23,7 @@ export default function TaskQueue({ trackKey, track }) {
         if (cancelled) return;
         const templateTasks = (templateContent.blocks || [])
           .filter((b) => b.type === 'task')
-          .map((b) => ({ id: b.id, title: b.text, section: 'task-queue' }));
+          .map((b) => ({ id: b.id, title: b.text, section: 'task-queue', category: b.category || null }));
         const defaults = templateTasks.length > 0 ? templateTasks : track.defaultTasks;
 
         const saved = data.tasks || [];
@@ -66,6 +66,51 @@ export default function TaskQueue({ trackKey, track }) {
 
   const doneCount = tasks.filter((t) => t.done).length;
 
+  // Group by category, preserving first-seen category order. Uncategorized
+  // tasks (the hardcoded track defaults, custom personal add-ons) land in a
+  // trailing "General" group so nothing gets silently dropped.
+  const groups = [];
+  const groupIndex = {};
+  tasks.forEach((t) => {
+    const cat = t.category || 'General';
+    if (!(cat in groupIndex)) {
+      groupIndex[cat] = groups.length;
+      groups.push({ name: cat, tasks: [] });
+    }
+    groups[groupIndex[cat]].tasks.push(t);
+  });
+  // Keep "General" last if it exists alongside real categories.
+  groups.sort((a, b) => (a.name === 'General' ? 1 : 0) - (b.name === 'General' ? 1 : 0));
+
+  function sortTasks(list) {
+    return [...list].sort((a, b) => (b.starred ? 1 : 0) - (a.starred ? 1 : 0) || (a.done ? 1 : 0) - (b.done ? 1 : 0));
+  }
+
+  function TaskRow({ t }) {
+    const opensSomewhere = t.section && t.section !== 'task-queue';
+    return (
+      <div className="w-full flex items-center gap-3 p-3.5 bg-card border border-border rounded-xl hover:border-navy/30 transition-colors">
+        <button onClick={() => toggleTask(t.id, !t.done)} className="shrink-0">
+          {t.done ? (
+            <CheckCircle2 className="text-success" size={20} />
+          ) : (
+            <Circle className="text-ink-300" size={20} />
+          )}
+        </button>
+        {opensSomewhere ? (
+          <Link to={`/${t.section}`} className={`flex-1 text-sm hover:underline ${t.done ? 'text-ink-300 line-through' : 'text-ink-900'}`}>
+            {t.title}
+          </Link>
+        ) : (
+          <span className={`flex-1 text-sm ${t.done ? 'text-ink-300 line-through' : 'text-ink-900'}`}>
+            {t.title}
+          </span>
+        )}
+        {t.starred && <Star size={16} className="text-lime fill-lime shrink-0" />}
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-2xl">
       <div className="flex items-center gap-4">
@@ -76,36 +121,23 @@ export default function TaskQueue({ trackKey, track }) {
         </div>
       </div>
 
-      <div className="mt-6 space-y-2">
-        {[...tasks]
-          .sort((a, b) => (b.starred ? 1 : 0) - (a.starred ? 1 : 0) || (a.done ? 1 : 0) - (b.done ? 1 : 0))
-          .map((t) => {
-            const opensSomewhere = t.section && t.section !== 'task-queue';
-            return (
-              <div
-                key={t.id}
-                className="w-full flex items-center gap-3 p-3.5 bg-card border border-border rounded-xl hover:border-navy/30 transition-colors"
-              >
-                <button onClick={() => toggleTask(t.id, !t.done)} className="shrink-0">
-                  {t.done ? (
-                    <CheckCircle2 className="text-success" size={20} />
-                  ) : (
-                    <Circle className="text-ink-300" size={20} />
-                  )}
-                </button>
-                {opensSomewhere ? (
-                  <Link to={`/${t.section}`} className={`flex-1 text-sm hover:underline ${t.done ? 'text-ink-300 line-through' : 'text-ink-900'}`}>
-                    {t.title}
-                  </Link>
-                ) : (
-                  <span className={`flex-1 text-sm ${t.done ? 'text-ink-300 line-through' : 'text-ink-900'}`}>
-                    {t.title}
-                  </span>
-                )}
-                {t.starred && <Star size={16} className="text-lime fill-lime shrink-0" />}
+      <div className="mt-6 space-y-6">
+        {groups.map((group) => {
+          const groupDone = group.tasks.filter((t) => t.done).length;
+          return (
+            <div key={group.name}>
+              {groups.length > 1 && (
+                <div className="flex items-center justify-between mb-2">
+                  <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-300">{group.name}</h2>
+                  <span className="text-xs text-ink-300">{groupDone}/{group.tasks.length}</span>
+                </div>
+              )}
+              <div className="space-y-2">
+                {sortTasks(group.tasks).map((t) => <TaskRow key={t.id} t={t} />)}
               </div>
-            );
-          })}
+            </div>
+          );
+        })}
       </div>
 
       <div className="mt-4 flex gap-2">

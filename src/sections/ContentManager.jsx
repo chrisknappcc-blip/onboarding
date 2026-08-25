@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Trash2, Pencil, Plus, Library, Upload, X, Save, FolderInput, Check, FileText } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { useIdentity } from '../lib/identity.jsx';
@@ -153,7 +153,9 @@ export default function ContentManager() {
                   className={`flex items-center gap-3 px-4 py-3 ${i !== data.mine.length - 1 ? 'border-b border-border' : ''} ${editingBlock?.id === b.id ? 'bg-navy/5' : ''}`}
                 >
                   <span className="flex-1 text-sm text-ink-900 truncate">
-                    {sectionConfig.kind === 'tasks' ? b.text : (b.label || b.text || b.url)}
+                    {sectionConfig.kind === 'tasks'
+                      ? (b.category ? `${b.category} — ${b.text}` : b.text)
+                      : (b.label || b.text || b.url)}
                   </span>
                   <button onClick={() => setEditingBlock(b)} className="text-ink-300 hover:text-navy shrink-0">
                     <Pencil size={15} />
@@ -513,6 +515,30 @@ function TeamsManagerPanel({ teams, onChanged }) {
   );
 }
 
+// Parses a pasted checklist like:
+//   Systems & Tools Setup
+//   ☐ Outlook connected to HubSpot
+//   ☐ Calendar connected to HubSpot
+// into [{ type: 'task', text, category }, ...]. Any line without a
+// checkbox marker is treated as a new category heading for the lines
+// that follow it.
+function parseChecklist(raw) {
+  const checkboxPattern = /^(\u2610|\u2611|\u2612|\[\s?x?\s?\]|-\s*\[\s?x?\s?\]|•|-)\s*/i;
+  const lines = raw.split('\n').map((l) => l.trim()).filter(Boolean);
+  const items = [];
+  let currentCategory = null;
+  for (const line of lines) {
+    const match = line.match(checkboxPattern);
+    if (match) {
+      const text = line.slice(match[0].length).trim();
+      if (text) items.push({ type: 'task', text, category: currentCategory });
+    } else {
+      currentCategory = line.replace(/:$/, '').trim();
+    }
+  }
+  return items;
+}
+
 function ManualAddForm({ kind, section, managerId, editingBlock, onSaved, onCancelEdit }) {
   const isEditing = Boolean(editingBlock);
   const [type, setType] = useState(editingBlock?.type === 'link' ? 'link' : editingBlock?.type === 'file' ? 'file' : 'text');
@@ -522,6 +548,10 @@ function ManualAddForm({ kind, section, managerId, editingBlock, onSaved, onCanc
   const [description, setDescription] = useState(editingBlock?.description || '');
   const [thumbnail, setThumbnail] = useState(editingBlock?.thumbnail || '');
   const [customLabel, setCustomLabel] = useState('');
+  const [taskCategory, setTaskCategory] = useState(editingBlock?.category || '');
+  const [taskMode, setTaskMode] = useState('single');
+  const [bulkText, setBulkText] = useState('');
+  const [bulkSaving, setBulkSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [fileInfo, setFileInfo] = useState(
     editingBlock?.type === 'file' ? { url: editingBlock.url, fileName: editingBlock.fileName, contentType: editingBlock.contentType } : null
@@ -588,7 +618,7 @@ function ManualAddForm({ kind, section, managerId, editingBlock, onSaved, onCanc
     setError(null);
     try {
       const block = kind === 'tasks'
-        ? { type: 'task', text }
+        ? { type: 'task', text, category: taskCategory || undefined }
         : type === 'link'
           ? { type: 'link', label, url, description: description || undefined, thumbnail: thumbnail || undefined }
           : type === 'file'
@@ -599,7 +629,7 @@ function ManualAddForm({ kind, section, managerId, editingBlock, onSaved, onCanc
         await api.editContent(section, editingBlock.id, block, managerId);
       } else {
         await api.addManualContent(section, block, managerId, customLabel || undefined);
-        setText(''); setLabel(''); setUrl(''); setDescription(''); setThumbnail(''); setCustomLabel('');
+        setText(''); setLabel(''); setUrl(''); setDescription(''); setThumbnail(''); setCustomLabel(''); setTaskCategory('');
       }
       onSaved();
     } catch (e) {
@@ -609,7 +639,28 @@ function ManualAddForm({ kind, section, managerId, editingBlock, onSaved, onCanc
     }
   }
 
-  const canSubmit = kind === 'tasks'
+  const parsedBulk = useMemo(() => parseChecklist(bulkText), [bulkText]);
+  const bulkCategoryCount = useMemo(() => new Set(parsedBulk.map((t) => t.category || '(none)')).size, [parsedBulk]);
+
+  async function submitBulk() {
+    if (parsedBulk.length === 0) return;
+    setBulkSaving(true);
+    setError(null);
+    try {
+      await api.addBulkContent(section, parsedBulk, managerId, customLabel || undefined);
+      setBulkText('');
+      onSaved();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBulkSaving(false);
+    }
+  }
+
+  const isBulkTaskMode = kind === 'tasks' && taskMode === 'bulk';
+  const canSubmit = isBulkTaskMode
+    ? parsedBulk.length > 0
+    : kind === 'tasks'
     ? text.trim()
     : type === 'link' ? url.trim()
     : type === 'file' ? Boolean(fileInfo?.url)
@@ -620,12 +671,54 @@ function ManualAddForm({ kind, section, managerId, editingBlock, onSaved, onCanc
       {error && <p className="text-sm text-red-600 mb-2">{error}</p>}
 
       {kind === 'tasks' ? (
-        <input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Task title"
-          className="w-full text-sm border border-border rounded-lg px-3 py-2"
-        />
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <button
+              onClick={() => setTaskMode('single')}
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg ${taskMode === 'single' ? 'bg-navy text-white' : 'bg-surface text-ink-500'}`}
+            >
+              Add one
+            </button>
+            <button
+              onClick={() => setTaskMode('bulk')}
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg ${taskMode === 'bulk' ? 'bg-navy text-white' : 'bg-surface text-ink-500'}`}
+            >
+              Paste a checklist
+            </button>
+          </div>
+
+          {taskMode === 'single' ? (
+            <>
+              <input
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="Task title"
+                className="w-full text-sm border border-border rounded-lg px-3 py-2"
+              />
+              <input
+                value={taskCategory}
+                onChange={(e) => setTaskCategory(e.target.value)}
+                placeholder="Category (optional, e.g. 'Systems & Tools Setup')"
+                className="w-full text-sm border border-border rounded-lg px-3 py-2"
+              />
+            </>
+          ) : (
+            <>
+              <textarea
+                value={bulkText}
+                onChange={(e) => setBulkText(e.target.value)}
+                placeholder={'Paste a checklist with category headers, e.g.:\n\nSystems & Tools Setup\n☐ Outlook connected to HubSpot\n☐ Calendar connected to HubSpot\n\nCare Continuity Fundamentals\n☐ Understanding of our mission'}
+                rows={10}
+                className="w-full text-xs font-mono border border-border rounded-lg px-3 py-2"
+              />
+              {bulkText.trim() && (
+                <p className="text-xs text-ink-500">
+                  {parsedBulk.length} task{parsedBulk.length !== 1 ? 's' : ''} detected across {bulkCategoryCount} categor{bulkCategoryCount !== 1 ? 'ies' : 'y'}
+                </p>
+              )}
+            </>
+          )}
+        </div>
       ) : (
         <>
           <div className="flex gap-2 mb-2">
@@ -756,11 +849,14 @@ function ManualAddForm({ kind, section, managerId, editingBlock, onSaved, onCanc
 
       <div className="flex items-center gap-2 mt-3">
         <button
-          onClick={submit}
-          disabled={saving || uploading || !canSubmit}
+          onClick={isBulkTaskMode ? submitBulk : submit}
+          disabled={saving || bulkSaving || uploading || !canSubmit}
           className="flex items-center gap-1.5 px-4 py-2 bg-navy text-white text-sm font-medium rounded-lg hover:bg-navy-dark disabled:opacity-50"
         >
-          <Plus size={15} /> {saving ? 'Saving...' : isEditing ? 'Save changes' : 'Add'}
+          <Plus size={15} />
+          {isBulkTaskMode
+            ? (bulkSaving ? 'Adding...' : `Add ${parsedBulk.length || ''} task${parsedBulk.length !== 1 ? 's' : ''}`)
+            : (saving ? 'Saving...' : isEditing ? 'Save changes' : 'Add')}
         </button>
         {isEditing && (
           <button
