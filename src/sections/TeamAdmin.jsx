@@ -293,7 +293,7 @@ export default function TeamAdmin() {
               <select
                 value={d.role}
                 onChange={(e) => updateDraft(u.id, 'role', e.target.value)}
-                className="text-sm border border-border rounded-lg px-2 py-1.5 bg-white"
+                className="w-full text-sm border border-border rounded-lg px-2 py-1.5 bg-white"
               >
                 {ROLE_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
@@ -303,7 +303,7 @@ export default function TeamAdmin() {
               <select
                 value={d.track}
                 onChange={(e) => updateDraft(u.id, 'track', e.target.value)}
-                className="text-sm border border-border rounded-lg px-2 py-1.5 bg-white"
+                className="w-full text-sm border border-border rounded-lg px-2 py-1.5 bg-white"
               >
                 <option value="bdr">BDR</option>
                 <option value="ae">AE</option>
@@ -312,7 +312,7 @@ export default function TeamAdmin() {
               <select
                 value={d.managerId}
                 onChange={(e) => updateDraft(u.id, 'managerId', e.target.value)}
-                className="text-sm border border-border rounded-lg px-2 py-1.5 bg-white"
+                className="w-full text-sm border border-border rounded-lg px-2 py-1.5 bg-white"
               >
                 <option value="">— none —</option>
                 {managers
@@ -325,7 +325,7 @@ export default function TeamAdmin() {
               <select
                 value={d.team}
                 onChange={(e) => updateDraft(u.id, 'team', e.target.value)}
-                className="text-sm border border-border rounded-lg px-2 py-1.5 bg-white"
+                className="w-full text-sm border border-border rounded-lg px-2 py-1.5 bg-white"
               >
                 <option value="">— none —</option>
                 {teams.map((t) => {
@@ -338,7 +338,7 @@ export default function TeamAdmin() {
                 <select
                   value={d.defaultTeamView}
                   onChange={(e) => updateDraft(u.id, 'defaultTeamView', e.target.value)}
-                  className="text-sm border border-border rounded-lg px-2 py-1.5 bg-white"
+                  className="w-full text-sm border border-border rounded-lg px-2 py-1.5 bg-white"
                 >
                   <option value="mine">Mine</option>
                   <option value="all">All</option>
