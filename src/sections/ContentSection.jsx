@@ -127,7 +127,7 @@ function formatFileSize(fileName) {
   return ext || 'FILE';
 }
 
-function ContentBlock({ block, query }) {
+export function ContentBlock({ block, query }) {
   if (block.type === 'text') {
     return (
       <p className="text-sm text-ink-700 leading-relaxed whitespace-pre-wrap">
