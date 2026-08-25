@@ -89,6 +89,17 @@ export async function handler(event, context) {
         return { statusCode: 200, body: JSON.stringify({ ok: true, count: created.length }) };
       }
 
+      if (action === 'reorder') {
+        const orderedIds = body.orderedIds || [];
+        const byId = new Map(current.blocks.map((b) => [b.id, b]));
+        const reordered = orderedIds.map((id) => byId.get(id)).filter(Boolean);
+        // Anything not in orderedIds (shouldn't normally happen) stays appended at the end
+        const missing = current.blocks.filter((b) => !orderedIds.includes(b.id));
+        current.blocks = [...reordered, ...missing];
+        await writeJson(path, current);
+        return { statusCode: 200, body: JSON.stringify({ ok: true }) };
+      }
+
       if (action === 'addFromLibrary') {
         const library = await readJson(`content/library/${section}.json`, { blocks: [] });
         const found = library.blocks.find((b) => b.id === body.blockId);

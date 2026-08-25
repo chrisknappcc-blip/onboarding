@@ -5,7 +5,7 @@ const TITLES = {
   'hubspot-walkthrough': 'HubSpot Walkthrough',
   'gong-library': 'Gong Recordings',
   'app-walkthroughs': 'Tools We Use',
-  intranet: 'Intranet',
+  intranet: 'Valuable Links',
   tasks: 'Tasks'
 };
 
