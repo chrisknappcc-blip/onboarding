@@ -8,7 +8,7 @@ export async function handler(event, context) {
   try {
     const requesterId = getUserId(context);
     const requesterEmail = getUserEmail(context);
-    const { track, taskId, done, title, section, targetUserId, starred } = JSON.parse(event.body || '{}');
+    const { track, taskId, done, title, section, targetUserId, starred, remove } = JSON.parse(event.body || '{}');
     if (!track || !taskId) {
       return { statusCode: 400, body: JSON.stringify({ error: 'track and taskId are required' }) };
     }
@@ -36,6 +36,13 @@ export async function handler(event, context) {
 
     const blobName = `progress/${track}/${userId}.json`;
     const current = await readJson(blobName, { tasks: [] });
+
+    if (remove) {
+      current.tasks = current.tasks.filter((t) => t.id !== taskId);
+      current.lastActive = new Date().toISOString();
+      await writeJson(blobName, current);
+      return { statusCode: 200, body: JSON.stringify({ ok: true }) };
+    }
 
     const idx = current.tasks.findIndex((t) => t.id === taskId);
     const canSetStar = !selfEdit; // only a manager/admin acting on someone else can star a task
