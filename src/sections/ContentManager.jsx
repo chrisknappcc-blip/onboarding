@@ -10,7 +10,7 @@ const SECTIONS = [
   { key: 'intro-team', label: 'Intro: Team Structure', kind: 'blocks' },
   { key: 'intro-network', label: 'Intro: Who Else You\'ll Work With', kind: 'blocks' },
   { key: 'playbook', label: 'Playbook', kind: 'blocks' },
-  { key: 'gong-library', label: 'Gong Recordings', kind: 'blocks' },
+  { key: 'gong-library', label: 'Insightful Gong Recordings', kind: 'blocks' },
   { key: 'app-walkthroughs', label: 'Tools We Use', kind: 'blocks' },
   { key: 'intranet', label: 'Valuable Links', kind: 'blocks' },
   { key: 'tasks', label: 'My Tasks (default checklist)', kind: 'tasks' }
