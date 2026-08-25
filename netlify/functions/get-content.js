@@ -22,11 +22,24 @@ export async function handler(event) {
     // Resolution order: a team-specific bucket (e.g. "Client Executive" vs
     // "Client Delivery" under the same manager) takes priority, then the
     // viewer's manager's own content, then a track-wide default, then a
-    // shared fallback used across all tracks.
+    // shared fallback used across all tracks. A bucket that exists but is
+    // empty (e.g. someone removed everything from it) is treated the same
+    // as "no bucket" - otherwise clearing your own content would hide the
+    // shared/track default instead of revealing it.
+    const hasContent = (d) => d && Array.isArray(d.blocks) && d.blocks.length > 0;
     let data = null;
-    if (team) data = await readJson(`content/team:${team}/${section}.json`, null);
-    if (!data && managerId) data = await readJson(`content/${managerId}/${section}.json`, null);
-    if (!data) data = await readJson(`content/${track}/${section}.json`, null);
+    if (team) {
+      const teamData = await readJson(`content/team:${team}/${section}.json`, null);
+      if (hasContent(teamData)) data = teamData;
+    }
+    if (!data && managerId) {
+      const managerData = await readJson(`content/${managerId}/${section}.json`, null);
+      if (hasContent(managerData)) data = managerData;
+    }
+    if (!data) {
+      const trackData = await readJson(`content/${track}/${section}.json`, null);
+      if (hasContent(trackData)) data = trackData;
+    }
     if (!data) data = await readJson(`content/shared/${section}.json`, null);
 
     const result = data || { title: TITLES[section] || section, blocks: [] };
