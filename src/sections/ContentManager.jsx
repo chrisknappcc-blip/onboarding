@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Trash2, Pencil, Plus, Library, Upload, X, Save, FolderInput, Check } from 'lucide-react';
+import { Trash2, Pencil, Plus, Library, Upload, X, Save, FolderInput, Check, FileText } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { useIdentity } from '../lib/identity.jsx';
 
