@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import mammoth from 'mammoth';
 import { Search, X, Link as LinkIcon, FileText, FileSpreadsheet, Presentation, ChevronDown, Download } from 'lucide-react';
 import { api } from '../lib/api.js';
@@ -149,7 +149,110 @@ export function iconForFile(fileName) {
   return FileText;
 }
 
-export function officeExt(fileName) {
+const DOCX_STYLES = `
+  .docx-preview h1, .docx-preview h2, .docx-preview h3 { font-weight: 600; margin: 1em 0 0.5em; color: #14181F; }
+  .docx-preview h1 { font-size: 1.4em; } .docx-preview h2 { font-size: 1.2em; } .docx-preview h3 { font-size: 1.05em; }
+  .docx-preview p { margin: 0.75em 0; }
+  .docx-preview ul { list-style: disc; margin: 0.75em 0; padding-left: 1.5em; }
+  .docx-preview ol { list-style: decimal; margin: 0.75em 0; padding-left: 1.5em; }
+  .docx-preview li { margin: 0.25em 0; }
+  .docx-preview strong { font-weight: 600; }
+  .docx-preview table { border-collapse: collapse; margin: 1em 0; }
+  .docx-preview td, .docx-preview th { border: 1px solid #E3E8EF; padding: 6px 10px; }
+`;
+
+// Renders the docx ourselves (instead of Microsoft's iframe viewer) so we
+// can actually highlight search matches and jump between them - impossible
+// with an embedded external viewer, since its content lives on Microsoft's
+// servers and we have no access to it.
+function DocxPreview({ url, query }) {
+  const containerRef = useRef(null);
+  const [html, setHtml] = useState(null);
+  const [matchInfo, setMatchInfo] = useState({ count: 0, active: 0 });
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(url)
+      .then((r) => r.arrayBuffer())
+      .then((buf) => mammoth.convertToHtml({ arrayBuffer: buf }))
+      .then((res) => !cancelled && setHtml(res.value))
+      .catch(() => !cancelled && setHtml('<p>Could not render this document - try downloading it instead.</p>'));
+    return () => { cancelled = true; };
+  }, [url]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || html === null) return;
+    container.innerHTML = html; // reset to a clean, unhighlighted state each time
+
+    const q = query.trim();
+    if (!q) { setMatchInfo({ count: 0, active: 0 }); return; }
+    const qLower = q.toLowerCase();
+
+    const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
+    const textNodes = [];
+    let node;
+    while ((node = walker.nextNode())) textNodes.push(node);
+
+    const marks = [];
+    textNodes.forEach((textNode) => {
+      const text = textNode.nodeValue;
+      const lower = text.toLowerCase();
+      if (!lower.includes(qLower)) return;
+      const frag = document.createDocumentFragment();
+      let lastEnd = 0;
+      let idx;
+      let searchFrom = 0;
+      while ((idx = lower.indexOf(qLower, searchFrom)) !== -1) {
+        frag.appendChild(document.createTextNode(text.slice(lastEnd, idx)));
+        const mark = document.createElement('mark');
+        mark.className = 'bg-lime/50 rounded-sm';
+        mark.textContent = text.slice(idx, idx + q.length);
+        frag.appendChild(mark);
+        marks.push(mark);
+        lastEnd = idx + q.length;
+        searchFrom = lastEnd;
+      }
+      frag.appendChild(document.createTextNode(text.slice(lastEnd)));
+      textNode.parentNode.replaceChild(frag, textNode);
+    });
+
+    setMatchInfo({ count: marks.length, active: 0 });
+    if (marks.length > 0) marks[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [html, query]);
+
+  function jump(delta) {
+    const marks = [...(containerRef.current?.querySelectorAll('mark') || [])];
+    if (!marks.length) return;
+    const next = (matchInfo.active + delta + marks.length) % marks.length;
+    marks[next].scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setMatchInfo((prev) => ({ ...prev, active: next }));
+  }
+
+  if (html === null) {
+    return <p className="p-4 text-sm text-ink-300">Loading preview...</p>;
+  }
+
+  return (
+    <div>
+      <style>{DOCX_STYLES}</style>
+      {matchInfo.count > 0 && (
+        <div className="flex items-center justify-between px-4 py-2 bg-lime/10 border-b border-border">
+          <span className="text-xs font-medium text-ink-700">
+            {matchInfo.count} match{matchInfo.count !== 1 ? 'es' : ''} for "{query}"
+          </span>
+          <div className="flex gap-1.5">
+            <button onClick={() => jump(-1)} className="px-2.5 py-1 text-xs font-medium bg-white border border-border rounded-md hover:bg-surface">Prev</button>
+            <button onClick={() => jump(1)} className="px-2.5 py-1 text-xs font-medium bg-white border border-border rounded-md hover:bg-surface">Next</button>
+          </div>
+        </div>
+      )}
+      <div ref={containerRef} className="docx-preview p-6 max-h-[85vh] overflow-y-auto text-sm text-ink-700 leading-relaxed" />
+    </div>
+  );
+}
+
+function officeExt(fileName) {
   return ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes((fileName || '').split('.').pop()?.toLowerCase());
 }
 function isPdf(fileName) {
@@ -165,6 +268,11 @@ function FileBlock({ block, query, matchedInDoc }) {
   const Icon = iconForFile(block.fileName);
   const absoluteUrl = `${window.location.origin}${block.url}`;
   const downloadUrl = `${block.url}&download=1`;
+  const isDocx = block.fileName?.toLowerCase().endsWith('.docx');
+  // Don't surface the raw uploaded filename as the card's title - it's
+  // usually a messy internal document name, not something worth showing.
+  // Only show a label if someone actually set a custom one.
+  const displayLabel = block.label && block.label !== block.fileName ? block.label : 'Document';
 
   useEffect(() => {
     if (expanded && isPlainText(block.fileName) && textContent === null) {
@@ -179,7 +287,7 @@ function FileBlock({ block, query, matchedInDoc }) {
           <Icon size={20} className="text-navy" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-navy truncate">{highlight(block.label || block.fileName, query)}</p>
+          <p className="text-sm font-medium text-navy truncate">{highlight(displayLabel, query)}</p>
           {block.description && (
             <p className="text-xs text-ink-500 mt-0.5 line-clamp-2">{highlight(block.description, query)}</p>
           )}
@@ -194,6 +302,8 @@ function FileBlock({ block, query, matchedInDoc }) {
         <div className="border-t border-border">
           {isPdf(block.fileName) ? (
             <iframe src={block.url} title={block.fileName} className="w-full h-[85vh]" />
+          ) : isDocx ? (
+            <DocxPreview url={block.url} query={query} />
           ) : officeExt(block.fileName) ? (
             <iframe
               src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(absoluteUrl)}`}
