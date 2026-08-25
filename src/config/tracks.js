@@ -11,7 +11,7 @@ export const TRACKS = {
     sections: [
       { key: 'task-queue', label: 'My Tasks', icon: 'ListChecks' },
       { key: 'hubspot-walkthrough', label: 'HubSpot Walkthrough', icon: 'MousePointerClick', searchable: true },
-      { key: 'gong-library', label: 'Gong Recordings', icon: 'PlayCircle' },
+      { key: 'gong-library', label: 'Insightful Gong Recordings', icon: 'PlayCircle' },
       { key: 'app-walkthroughs', label: 'Tools We Use', icon: 'LayoutGrid', searchable: true },
       { key: 'intranet', label: 'Valuable Links', icon: 'Globe' },
       { key: 'playbook', label: 'Playbook', icon: 'BookOpen', searchable: true }
@@ -34,7 +34,7 @@ export const TRACKS = {
     sections: [
       { key: 'task-queue', label: 'My Tasks', icon: 'ListChecks' },
       { key: 'hubspot-walkthrough', label: 'HubSpot Walkthrough', icon: 'MousePointerClick', searchable: true },
-      { key: 'gong-library', label: 'Gong Recordings', icon: 'PlayCircle' },
+      { key: 'gong-library', label: 'Insightful Gong Recordings', icon: 'PlayCircle' },
       { key: 'app-walkthroughs', label: 'Tools We Use', icon: 'LayoutGrid', searchable: true },
       { key: 'intranet', label: 'Valuable Links', icon: 'Globe' },
       { key: 'playbook', label: 'Playbook', icon: 'BookOpen', searchable: true }
