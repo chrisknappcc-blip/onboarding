@@ -74,6 +74,21 @@ export async function handler(event, context) {
         return { statusCode: 200, body: JSON.stringify({ ok: true, block }) };
       }
 
+      if (action === 'addBulk') {
+        const blocks = body.blocks || [];
+        const addedByName = (body.customLabel && body.customLabel.trim())
+          || `${getUserName(context)} - ${getUserTrack(context).toUpperCase()}`;
+        const created = [];
+        for (const raw of blocks) {
+          const block = { ...raw, id: `blk-${Date.now()}-${Math.random().toString(36).slice(2, 6)}` };
+          current.blocks.push(block);
+          created.push(block);
+          await upsertIntoLibrary(section, block, addedByName);
+        }
+        await writeJson(path, current);
+        return { statusCode: 200, body: JSON.stringify({ ok: true, count: created.length }) };
+      }
+
       if (action === 'addFromLibrary') {
         const library = await readJson(`content/library/${section}.json`, { blocks: [] });
         const found = library.blocks.find((b) => b.id === body.blockId);
