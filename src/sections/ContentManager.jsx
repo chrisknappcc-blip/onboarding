@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Trash2, Pencil, Plus, Library, Upload, X, Save, FolderInput, Check, FileText } from 'lucide-react';
+import { Trash2, Pencil, Plus, Library, Upload, X, Save, FolderInput, Check, FileText, GripVertical } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { useIdentity } from '../lib/identity.jsx';
 
@@ -12,7 +12,7 @@ const SECTIONS = [
   { key: 'playbook', label: 'Playbook', kind: 'blocks' },
   { key: 'gong-library', label: 'Gong Recordings', kind: 'blocks' },
   { key: 'app-walkthroughs', label: 'Tools We Use', kind: 'blocks' },
-  { key: 'intranet', label: 'Intranet', kind: 'blocks' },
+  { key: 'intranet', label: 'Valuable Links', kind: 'blocks' },
   { key: 'tasks', label: 'My Tasks (default checklist)', kind: 'tasks' }
 ];
 
@@ -25,6 +25,7 @@ export default function ContentManager() {
   const [data, setData] = useState(null); // { managerId, mine, library }
   const [error, setError] = useState(null);
   const [editingBlock, setEditingBlock] = useState(null);
+  const [dragIndex, setDragIndex] = useState(null);
 
   const sectionConfig = SECTIONS.find((s) => s.key === section);
   const effectiveTarget = target || undefined; // undefined = "me", handled server-side
@@ -71,6 +72,16 @@ export default function ContentManager() {
     } catch (e) {
       setError(e.message);
     }
+  }
+
+  function handleDrop(targetIndex) {
+    if (dragIndex === null || dragIndex === targetIndex || !data?.mine) return;
+    const reordered = [...data.mine];
+    const [moved] = reordered.splice(dragIndex, 1);
+    reordered.splice(targetIndex, 0, moved);
+    setData((prev) => ({ ...prev, mine: reordered }));
+    setDragIndex(null);
+    api.reorderContent(section, reordered.map((b) => b.id), effectiveTarget).catch((e) => setError(e.message));
   }
 
   const libraryOptions = (data?.library || []).filter((b) => {
@@ -143,15 +154,23 @@ export default function ContentManager() {
         <p className="text-sm text-ink-300 mt-4">Loading...</p>
       ) : (
         <>
-          <div className="mt-5 bg-card border border-border rounded-xl overflow-hidden">
+          {(data.mine || []).length > 1 && (
+            <p className="text-xs text-ink-300 mt-4">Drag the grip handle to reorder.</p>
+          )}
+          <div className="mt-2 bg-card border border-border rounded-xl overflow-hidden">
             {(data.mine || []).length === 0 ? (
               <div className="p-6 text-center text-sm text-ink-300">Nothing added yet.</div>
             ) : (
               data.mine.map((b, i) => (
                 <div
                   key={b.id}
-                  className={`flex items-center gap-3 px-4 py-3 ${i !== data.mine.length - 1 ? 'border-b border-border' : ''} ${editingBlock?.id === b.id ? 'bg-navy/5' : ''}`}
+                  draggable
+                  onDragStart={() => setDragIndex(i)}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={() => handleDrop(i)}
+                  className={`flex items-center gap-2 px-4 py-3 ${i !== data.mine.length - 1 ? 'border-b border-border' : ''} ${editingBlock?.id === b.id ? 'bg-navy/5' : ''} ${dragIndex === i ? 'opacity-40' : ''}`}
                 >
+                  <GripVertical size={15} className="text-ink-300 cursor-grab shrink-0" />
                   <span className="flex-1 text-sm text-ink-900 truncate">
                     {sectionConfig.kind === 'tasks'
                       ? (b.category ? `${b.category} — ${b.text}` : b.text)
