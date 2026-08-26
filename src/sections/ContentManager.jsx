@@ -174,7 +174,7 @@ export default function ContentManager() {
                   <span className="flex-1 text-sm text-ink-900 truncate">
                     {sectionConfig.kind === 'tasks'
                       ? (b.category ? `${b.category} — ${b.text}` : b.text)
-                      : (b.label || b.text || b.url)}
+                      : (b.folder ? `${b.folder} / ${b.label || b.text || b.url}` : (b.label || b.text || b.url))}
                   </span>
                   <button onClick={() => setEditingBlock(b)} className="text-ink-300 hover:text-navy shrink-0">
                     <Pencil size={15} />
@@ -567,6 +567,7 @@ function ManualAddForm({ kind, section, managerId, editingBlock, onSaved, onCanc
   const [description, setDescription] = useState(editingBlock?.description || '');
   const [thumbnail, setThumbnail] = useState(editingBlock?.thumbnail || '');
   const [customLabel, setCustomLabel] = useState('');
+  const [folder, setFolder] = useState(editingBlock?.folder || '');
   const [taskCategory, setTaskCategory] = useState(editingBlock?.category || '');
   const [taskMode, setTaskMode] = useState('single');
   const [bulkText, setBulkText] = useState('');
@@ -639,16 +640,16 @@ function ManualAddForm({ kind, section, managerId, editingBlock, onSaved, onCanc
       const block = kind === 'tasks'
         ? { type: 'task', text, category: taskCategory || undefined }
         : type === 'link'
-          ? { type: 'link', label, url, description: description || undefined, thumbnail: thumbnail || undefined }
+          ? { type: 'link', label, url, description: description || undefined, thumbnail: thumbnail || undefined, folder: folder.trim() || undefined }
           : type === 'file'
-            ? { type: 'file', label: label || fileInfo?.fileName, url: fileInfo?.url, fileName: fileInfo?.fileName, contentType: fileInfo?.contentType, description: description || undefined }
-            : { type: 'text', text };
+            ? { type: 'file', label: label || fileInfo?.fileName, url: fileInfo?.url, fileName: fileInfo?.fileName, contentType: fileInfo?.contentType, description: description || undefined, folder: folder.trim() || undefined }
+            : { type: 'text', text, folder: folder.trim() || undefined };
 
       if (isEditing) {
         await api.editContent(section, editingBlock.id, block, managerId);
       } else {
         await api.addManualContent(section, block, managerId, customLabel || undefined);
-        setText(''); setLabel(''); setUrl(''); setDescription(''); setThumbnail(''); setCustomLabel(''); setTaskCategory('');
+        setText(''); setLabel(''); setUrl(''); setDescription(''); setThumbnail(''); setCustomLabel(''); setTaskCategory(''); setFolder('');
       }
       onSaved();
     } catch (e) {
@@ -760,6 +761,12 @@ function ManualAddForm({ kind, section, managerId, editingBlock, onSaved, onCanc
               File
             </button>
           </div>
+          <input
+            value={folder}
+            onChange={(e) => setFolder(e.target.value)}
+            placeholder="Folder (optional) — e.g. 'Discovery Calls' or 'Discovery Calls/Q3'"
+            className="w-full text-sm border border-border rounded-lg px-3 py-2 mb-2"
+          />
           {type === 'text' ? (
             <textarea
               value={text}

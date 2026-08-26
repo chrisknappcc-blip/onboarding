@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import mammoth from 'mammoth';
-import { Search, X, Link as LinkIcon, FileText, FileSpreadsheet, Presentation, ChevronDown, Download } from 'lucide-react';
+import { Search, X, Link as LinkIcon, FileText, FileSpreadsheet, Presentation, ChevronDown, Download, Folder } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { useIdentity } from '../lib/identity.jsx';
 
@@ -54,6 +54,14 @@ export default function ContentSection({ trackKey, section, emptyLabel, searchab
       .filter((entry) => entry.matches);
   }, [content, query, fileTexts]);
 
+  // Folders only apply to the unfiltered, default view - while searching,
+  // results render as a flat list so nothing is hidden inside a collapsed
+  // folder the person hasn't opened.
+  const folderTree = useMemo(() => {
+    if (query.trim()) return null;
+    return buildFolderTree(content?.blocks || []);
+  }, [content, query]);
+
   if (error) return <p className="text-sm text-red-600">Couldn't load this section: {error}</p>;
   if (!content) return <p className="text-sm text-ink-300">Loading...</p>;
 
@@ -89,7 +97,7 @@ export default function ContentSection({ trackKey, section, emptyLabel, searchab
             {emptyLabel || 'Content for this section is on the way.'}
           </p>
         </div>
-      ) : (
+      ) : query.trim() ? (
         <div className="mt-5 space-y-4">
           {filteredBlocks.length === 0 ? (
             <p className="text-sm text-ink-300">No matches for "{query}".</p>
@@ -99,7 +107,60 @@ export default function ContentSection({ trackKey, section, emptyLabel, searchab
             ))
           )}
         </div>
+      ) : (
+        <div className="mt-5">
+          <FolderNode node={folderTree} depth={0} />
+        </div>
       )}
+    </div>
+  );
+}
+
+// Groups blocks into a tree using each block's optional `folder` field, e.g.
+// "Client Calls/Discovery" nests under Client Calls > Discovery. Blocks with
+// no folder set render at the root, same as before folders existed.
+function buildFolderTree(blocks) {
+  const root = { name: null, folders: {}, items: [] };
+  blocks.forEach((b) => {
+    const path = (b.folder || '').split('/').map((p) => p.trim()).filter(Boolean);
+    let node = root;
+    for (const part of path) {
+      if (!node.folders[part]) node.folders[part] = { name: part, folders: {}, items: [] };
+      node = node.folders[part];
+    }
+    node.items.push(b);
+  });
+  return root;
+}
+
+function FolderNode({ node, depth }) {
+  const [expanded, setExpanded] = useState(true);
+  const folderNames = Object.keys(node.folders);
+
+  return (
+    <div className="space-y-3">
+      {node.items.map((block, i) => <ContentBlock key={i} block={block} query="" />)}
+
+      {folderNames.map((name) => {
+        const child = node.folders[name];
+        return (
+          <div key={name}>
+            <button
+              onClick={() => setExpanded((v) => !v)}
+              className="w-full flex items-center gap-2 py-1.5 text-left"
+            >
+              <ChevronDown size={14} className={`text-ink-300 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+              <Folder size={15} className="text-ink-300" />
+              <span className="text-xs font-semibold uppercase tracking-wide text-ink-500">{name}</span>
+            </button>
+            {expanded && (
+              <div className="mt-2 pl-5 border-l border-border space-y-3">
+                <FolderNode node={child} depth={depth + 1} />
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
