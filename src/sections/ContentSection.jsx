@@ -62,6 +62,16 @@ export default function ContentSection({ trackKey, section, emptyLabel, searchab
     return buildFolderTree(content?.blocks || []);
   }, [content, query]);
 
+  const [collapsedPaths, setCollapsedPaths] = useState(new Set());
+  function toggleFolder(path) {
+    setCollapsedPaths((prev) => {
+      const next = new Set(prev);
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
+      return next;
+    });
+  }
+
   if (error) return <p className="text-sm text-red-600">Couldn't load this section: {error}</p>;
   if (!content) return <p className="text-sm text-ink-300">Loading...</p>;
 
@@ -109,7 +119,8 @@ export default function ContentSection({ trackKey, section, emptyLabel, searchab
         </div>
       ) : (
         <div className="mt-5">
-          <FolderNode node={folderTree} depth={0} />
+          <FolderControls tree={folderTree} collapsedPaths={collapsedPaths} setCollapsedPaths={setCollapsedPaths} />
+          <FolderContents node={folderTree} path="" collapsedPaths={collapsedPaths} onToggle={toggleFolder} />
         </div>
       )}
     </div>
@@ -133,20 +144,48 @@ function buildFolderTree(blocks) {
   return root;
 }
 
-function FolderNode({ node, depth }) {
-  const [expanded, setExpanded] = useState(true);
-  const folderNames = Object.keys(node.folders);
+function allFolderPaths(node, prefix = '') {
+  let paths = [];
+  Object.keys(node.folders).forEach((name) => {
+    const path = prefix ? `${prefix}/${name}` : name;
+    paths.push(path);
+    paths = paths.concat(allFolderPaths(node.folders[name], path));
+  });
+  return paths;
+}
 
+function FolderControls({ tree, collapsedPaths, setCollapsedPaths }) {
+  const paths = useMemo(() => allFolderPaths(tree), [tree]);
+  if (paths.length === 0) return null;
+  const allCollapsed = paths.every((p) => collapsedPaths.has(p));
+  return (
+    <div className="flex justify-end mb-2">
+      <button
+        onClick={() => setCollapsedPaths(allCollapsed ? new Set() : new Set(paths))}
+        className="text-xs font-medium text-navy hover:text-navy-dark"
+      >
+        {allCollapsed ? 'Expand all' : 'Collapse all'}
+      </button>
+    </div>
+  );
+}
+
+// Renders whatever sits directly at this level (items + one row per child
+// folder). Each child folder gets its own independent collapse state, keyed
+// by its full path - siblings no longer share one shared expanded flag.
+function FolderContents({ node, path, collapsedPaths, onToggle }) {
   return (
     <div className="space-y-3">
       {node.items.map((block, i) => <ContentBlock key={i} block={block} query="" />)}
 
-      {folderNames.map((name) => {
+      {Object.keys(node.folders).map((name) => {
         const child = node.folders[name];
+        const fullPath = path ? `${path}/${name}` : name;
+        const expanded = !collapsedPaths.has(fullPath);
         return (
           <div key={name}>
             <button
-              onClick={() => setExpanded((v) => !v)}
+              onClick={() => onToggle(fullPath)}
               className="w-full flex items-center gap-2 py-1.5 text-left"
             >
               <ChevronDown size={14} className={`text-ink-300 transition-transform ${expanded ? 'rotate-180' : ''}`} />
@@ -155,7 +194,7 @@ function FolderNode({ node, depth }) {
             </button>
             {expanded && (
               <div className="mt-2 pl-5 border-l border-border space-y-3">
-                <FolderNode node={child} depth={depth + 1} />
+                <FolderContents node={child} path={fullPath} collapsedPaths={collapsedPaths} onToggle={onToggle} />
               </div>
             )}
           </div>

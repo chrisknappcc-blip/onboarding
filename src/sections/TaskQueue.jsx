@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { CheckCircle2, Circle, Plus, Star } from 'lucide-react';
+import { CheckCircle2, Circle, Plus, Star, ChevronDown } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { useIdentity } from '../lib/identity.jsx';
 import ProgressRing from '../components/ProgressRing.jsx';
@@ -17,6 +17,7 @@ export default function TaskQueue({ trackKey, track }) {
   const [tasks, setTasks] = useState(null);
   const [newTask, setNewTask] = useState('');
   const [error, setError] = useState(null);
+  const [collapsedGroups, setCollapsedGroups] = useState(new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -136,17 +137,31 @@ export default function TaskQueue({ trackKey, track }) {
       <div className="mt-6 space-y-6">
         {groups.map((group) => {
           const groupDone = group.tasks.filter((t) => t.done).length;
+          const collapsed = collapsedGroups.has(group.name);
           return (
             <div key={group.name}>
               {groups.length > 1 && (
-                <div className="flex items-center justify-between mb-2">
-                  <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-300">{group.name}</h2>
+                <button
+                  onClick={() => setCollapsedGroups((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(group.name)) next.delete(group.name);
+                    else next.add(group.name);
+                    return next;
+                  })}
+                  className="w-full flex items-center justify-between mb-2"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <ChevronDown size={13} className={`text-ink-300 transition-transform ${collapsed ? '-rotate-90' : ''}`} />
+                    <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-300">{group.name}</h2>
+                  </span>
                   <span className="text-xs text-ink-300">{groupDone}/{group.tasks.length}</span>
+                </button>
+              )}
+              {!collapsed && (
+                <div className="space-y-2">
+                  {sortTasks(group.tasks).map((t) => <TaskRow key={t.id} t={t} />)}
                 </div>
               )}
-              <div className="space-y-2">
-                {sortTasks(group.tasks).map((t) => <TaskRow key={t.id} t={t} />)}
-              </div>
             </div>
           );
         })}
