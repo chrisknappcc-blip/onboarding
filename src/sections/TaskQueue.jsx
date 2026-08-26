@@ -5,6 +5,13 @@ import { api } from '../lib/api.js';
 import { useIdentity } from '../lib/identity.jsx';
 import ProgressRing from '../components/ProgressRing.jsx';
 
+function formatCompletedAt(iso) {
+  const d = new Date(iso);
+  const datePart = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  const timePart = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  return `${datePart} at ${timePart}`;
+}
+
 export default function TaskQueue({ trackKey, track }) {
   const { managerId, team } = useIdentity();
   const [tasks, setTasks] = useState(null);
@@ -97,15 +104,20 @@ export default function TaskQueue({ trackKey, track }) {
             <Circle className="text-ink-300" size={20} />
           )}
         </button>
-        {opensSomewhere ? (
-          <Link to={`/${t.section}`} className={`flex-1 text-sm hover:underline ${t.done ? 'text-ink-300 line-through' : 'text-ink-900'}`}>
-            {t.title}
-          </Link>
-        ) : (
-          <span className={`flex-1 text-sm ${t.done ? 'text-ink-300 line-through' : 'text-ink-900'}`}>
-            {t.title}
-          </span>
-        )}
+        <div className="flex-1 min-w-0">
+          {opensSomewhere ? (
+            <Link to={`/${t.section}`} className={`text-sm hover:underline ${t.done ? 'text-ink-300 line-through' : 'text-ink-900'}`}>
+              {t.title}
+            </Link>
+          ) : (
+            <span className={`text-sm ${t.done ? 'text-ink-300 line-through' : 'text-ink-900'}`}>
+              {t.title}
+            </span>
+          )}
+          {t.done && t.completedAt && (
+            <p className="text-[11px] text-ink-300 mt-0.5">Completed {formatCompletedAt(t.completedAt)}</p>
+          )}
+        </div>
         {t.starred && <Star size={16} className="text-lime fill-lime shrink-0" />}
       </div>
     );

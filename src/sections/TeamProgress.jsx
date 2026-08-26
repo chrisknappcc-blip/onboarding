@@ -4,6 +4,13 @@ import { api } from '../lib/api.js';
 import { useIdentity } from '../lib/identity.jsx';
 import ProgressRing from '../components/ProgressRing.jsx';
 
+function formatCompletedAt(iso) {
+  const d = new Date(iso);
+  const datePart = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  const timePart = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  return `${datePart} at ${timePart}`;
+}
+
 export default function TeamProgress({ trackKey }) {
   const { isAdmin, defaultTeamView } = useIdentity();
   const [scope, setScope] = useState(defaultTeamView);
@@ -164,8 +171,13 @@ function IndividualView({ trackKey, person, onBack, onChanged }) {
               ) : (
                 <Circle className="text-ink-300 shrink-0" size={20} />
               )}
-              <span className={`text-sm truncate ${t.done ? 'text-ink-300 line-through' : 'text-ink-900'}`}>
-                {t.title}
+              <span className="min-w-0">
+                <span className={`block text-sm truncate ${t.done ? 'text-ink-300 line-through' : 'text-ink-900'}`}>
+                  {t.title}
+                </span>
+                {t.done && t.completedAt && (
+                  <span className="block text-[11px] text-ink-300 mt-0.5">Completed {formatCompletedAt(t.completedAt)}</span>
+                )}
               </span>
             </button>
             <button
