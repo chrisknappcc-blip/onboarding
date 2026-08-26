@@ -47,7 +47,14 @@ export async function handler(event, context) {
     const idx = current.tasks.findIndex((t) => t.id === taskId);
     const canSetStar = !selfEdit; // only a manager/admin acting on someone else can star a task
     if (idx >= 0) {
+      // Only touch the completion timestamp when done actually changes -
+      // otherwise starring/renaming a task would keep bumping its
+      // completedAt time even though it wasn't just completed.
+      const wasDone = current.tasks[idx].done;
       current.tasks[idx].done = done;
+      if (done !== wasDone) {
+        current.tasks[idx].completedAt = done ? new Date().toISOString() : null;
+      }
       if (canSetStar && starred !== undefined) current.tasks[idx].starred = starred;
       if (title) current.tasks[idx].title = title;
       if (section) current.tasks[idx].section = section;
@@ -57,6 +64,7 @@ export async function handler(event, context) {
         title: title || taskId,
         section: section || 'task-queue',
         done,
+        completedAt: done ? new Date().toISOString() : null,
         starred: canSetStar ? Boolean(starred) : false,
         addedBy: selfEdit ? undefined : requesterEmail
       });

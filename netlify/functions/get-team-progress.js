@@ -74,7 +74,8 @@ export async function handler(event, context) {
             section: t.section,
             category: t.category || null,
             done: s?.done || false,
-            starred: s?.starred || false
+            starred: s?.starred || false,
+            completedAt: s?.completedAt || null
           };
         });
         // Tasks the person (or a manager) added that aren't part of the template
