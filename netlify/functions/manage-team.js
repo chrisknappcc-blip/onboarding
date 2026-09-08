@@ -62,11 +62,15 @@ export async function handler(event, context) {
         // Fields sent at creation time (confirm status, app_metadata)
         // aren't reliably applied on Netlify's implementation - only a
         // follow-up PUT actually sticks, so everything goes there instead.
+        // "confirm" (a plain boolean) is the field Netlify's own GoTrue
+        // fork actually reads - confirmed_at and email_confirm are both
+        // silently ignored, the former being Supabase's naming convention
+        // for the same underlying project, not Netlify's.
         const patchRes = await fetch(`${url}/admin/users/${created.id}`, {
           method: 'PUT',
           headers: { ...authHeader, 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            confirmed_at: new Date().toISOString(),
+            confirm: true,
             app_metadata: appMetadata || {},
             ...(fullName ? { user_metadata: { full_name: fullName } } : {})
           })
@@ -80,18 +84,16 @@ export async function handler(event, context) {
       }
 
       // Safe fixup for an account that got stuck unconfirmed (e.g. created
-      // before this fix existed) - only ever touches confirmation fields,
+      // before this fix existed) - only ever touches the confirm field,
       // never roles or other metadata, so it can't accidentally grant
-      // access. Sends both field names since it's unclear which one this
-      // GoTrue instance actually honors on a PUT (as opposed to at
-      // creation, where neither reliably works).
+      // access.
       if (body.action === 'confirm') {
         const { userId } = body;
         if (!userId) return { statusCode: 400, body: JSON.stringify({ error: 'userId is required' }) };
         const res = await fetch(`${url}/admin/users/${userId}`, {
           method: 'PUT',
           headers: { ...authHeader, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ confirmed_at: new Date().toISOString(), email_confirm: true })
+          body: JSON.stringify({ confirm: true })
         });
         if (!res.ok) {
           const text = await res.text().catch(() => '');
